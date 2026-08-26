@@ -28,6 +28,7 @@ export interface ShopwareTestContext {
 export interface ShopwareBridgeRuntime {
     services: ShopwareTestServices;
     loadComponent(componentName: string): Promise<void>;
+    prepareMount(): void;
     mockService<T>(name: string, implementation: T): () => void;
     reset(): void;
     setAclRoles(roles: readonly string[] | null): void;
@@ -87,6 +88,8 @@ if (currentPinia) {
     createApp({}).use(currentPinia);
     setActivePinia(currentPinia);
 }
+
+await import('virtual:vitest-shopware-admin-bridge/core-stores');
 
 for (const moduleName of [
     'virtual:vitest-shopware-admin-bridge/mixins',
@@ -173,7 +176,7 @@ const DEFAULT_API_CONTEXT = {
     inheritance: false,
 };
 const DEFAULT_SESSION_CONTEXT = {
-    locales: ['en-GB'],
+    locales: ['en-GB', 'de-DE'],
     locale: 'en-GB',
     languageId: DEFAULT_API_CONTEXT.languageId,
 };
@@ -186,6 +189,22 @@ function getStore(name: string): any | null {
     }
 }
 
+function getLegacyState(name: string): any | null {
+    try {
+        return ShopwareInstance.State?.get(name) ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function replaceLocales(store: any | null, locales: string[]): void {
+    if (!Array.isArray(store?.locales)) {
+        return;
+    }
+
+    store.locales.splice(0, store.locales.length, ...locales);
+}
+
 function applyContext(context: ShopwareTestContext = {}): void {
     const api = { ...DEFAULT_API_CONTEXT, ...(context.api ?? {}) };
     if (ShopwareInstance.Context?.api) {
@@ -196,13 +215,30 @@ function applyContext(context: ShopwareTestContext = {}): void {
         Object.assign(contextStore.api, api);
     }
 
+    const legacyContext = getLegacyState('context');
+    if (legacyContext?.api) {
+        Object.assign(legacyContext.api, api);
+    }
+
     const session = { ...DEFAULT_SESSION_CONTEXT, ...(context.session ?? {}) };
+    session.locales = [...new Set(session.locales)];
+    replaceLocales(getStore('system'), session.locales);
+    replaceLocales(getLegacyState('system'), session.locales);
+
     const sessionStore = getStore('session');
     if (typeof sessionStore?.setAdminLocaleState === 'function') {
         sessionStore.setAdminLocaleState(session);
     } else if (sessionStore) {
         Object.assign(sessionStore, session);
     }
+
+    const legacySession = getLegacyState('session');
+    if (legacySession) {
+        legacySession.currentLocale = session.locale;
+        legacySession.languageId = session.languageId;
+    }
+
+    syncLocaleState(session);
 }
 
 ShopwareInstance.Application.view = {
@@ -272,6 +308,51 @@ const i18n = createI18n({
     messages: {},
     missing: (_locale, key) => key,
 });
+
+function syncLocaleState(session: typeof DEFAULT_SESSION_CONTEXT): void {
+    const localeFactory = ShopwareInstance.Application.getContainer('factory').locale;
+    const registry = localeFactory.getLocaleRegistry() as Map<string, Record<string, unknown>>;
+
+    for (const locale of session.locales) {
+        if (!registry.has(locale)) {
+            localeFactory.register(locale, {});
+        }
+    }
+
+    for (const [locale, messages] of registry) {
+        i18n.global.setLocaleMessage(locale, messages);
+    }
+
+    i18n.global.locale.value = session.locale;
+    localeFactory.storeCurrentLocale(session.locale);
+    const translate = (...args: unknown[]) => (i18n.global.t as Function)(...args);
+    const translationExists = (...args: unknown[]) => (i18n.global.te as Function)(...args);
+    config.global.mocks.$t = translate;
+    config.global.mocks.$tc = translate;
+    config.global.mocks.$te = translationExists;
+    config.global.mocks.$i18n = {
+        locale: session.locale,
+        fallbackLocale: 'en-GB',
+        messages: Object.fromEntries(registry),
+    };
+    ShopwareInstance.Application.view.root.$t = translate;
+    ShopwareInstance.Application.view.i18n.global.t = translate;
+    ShopwareInstance.Application.view.i18n.global.tc = translate;
+    ShopwareInstance.Application.view.i18n.global.te = translationExists;
+}
+
+function currentLocaleState(): typeof DEFAULT_SESSION_CONTEXT {
+    const sessionStore = getStore('session') ?? getLegacyState('session');
+    const systemStore = getStore('system') ?? getLegacyState('system');
+
+    return {
+        locales: Array.isArray(systemStore?.locales) && systemStore.locales.length
+            ? [...systemStore.locales]
+            : [...DEFAULT_SESSION_CONTEXT.locales],
+        locale: sessionStore?.currentLocale ?? DEFAULT_SESSION_CONTEXT.locale,
+        languageId: sessionStore?.languageId ?? DEFAULT_SESSION_CONTEXT.languageId,
+    };
+}
 const virtualCallStackPlugin = (await import('virtual:vitest-shopware-admin-bridge/virtual-call-stack-plugin')).default;
 const meteorSdkDataPlugin = (await import('virtual:vitest-shopware-admin-bridge/meteor-sdk-data-plugin')).default;
 const getBlockDataScope = (await import('virtual:vitest-shopware-admin-bridge/block-data-scope')).default;
@@ -367,6 +448,9 @@ const consoleGuard = runtimeOptions.strictConsole ? createConsoleGuard(console) 
 const runtime: ShopwareBridgeRuntime = {
     services,
     loadComponent,
+    prepareMount() {
+        syncLocaleState(currentLocaleState());
+    },
     mockService<T>(name: string, implementation: T): () => void {
         const registry = ShopwareInstance.Service();
         const hadPrevious = new Set<string>(registry.list()).has(name);

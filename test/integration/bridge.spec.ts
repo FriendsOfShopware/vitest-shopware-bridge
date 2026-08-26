@@ -128,6 +128,28 @@ describe('Shopware Vitest bridge', () => {
         expect(Shopware.Service('feature').isActive('FEATURE_NEXT')).toBe(true);
         expect((globalThis as any)._features_.FEATURE_NEXT).toBe(true);
         expect(Shopware.Context.api.languageId).toBe('custom-language');
+
+        const state = process.env.VITEST_SHOPWARE_VERSION === '6.6' ? Shopware.State : Shopware.Store;
+        expect(state.get('context').api.languageId).toBe('custom-language');
+        expect(state.get('session').currentLocale).toBe('de-DE');
+        expect(state.get('session').languageId).toBe('custom-language');
+        expect(state.get('system').locales).toEqual(['de-DE']);
+    });
+
+    it('boots standard locales and exposes extension messages through Vue i18n', async () => {
+        const localeFactory = Shopware.Application.getContainer('factory').locale;
+
+        expect(localeFactory.getLocaleRegistry().has('en-GB')).toBe(true);
+        expect(localeFactory.getLocaleRegistry().has('de-DE')).toBe(true);
+        Shopware.Locale.extend('de-DE', { bridge: { greeting: 'Hallo' } });
+        setShopwareContext({ session: { locale: 'de-DE', locales: ['de-DE'] } });
+        Shopware.Component.register('bridge-locale-fixture', {
+            template: '<span class="bridge-locale">{{ $t("bridge.greeting") }}</span>',
+        });
+
+        const wrapper = await mountShopwareComponent('bridge-locale-fixture');
+
+        expect(wrapper.get('.bridge-locale').text()).toBe('Hallo');
     });
 
     it('creates predictable repository doubles and routes them by entity name', async () => {
@@ -151,6 +173,10 @@ describe('Shopware Vitest bridge', () => {
 
         expect(Shopware.Store._rootState).not.toBe(previousPinia);
         expect(Shopware.Context.api.languageId).toBe('2fbb5fe2e29a4d70aa5854ce7ce3e20b');
+        const state = process.env.VITEST_SHOPWARE_VERSION === '6.6' ? Shopware.State : Shopware.Store;
+        expect(state.get('context').api.languageId).toBe('2fbb5fe2e29a4d70aa5854ce7ce3e20b');
+        expect(state.get('session').currentLocale).toBe('en-GB');
+        expect(state.get('system').locales).toEqual(['en-GB', 'de-DE']);
     });
 
     it('registers global plugins, directives, standard mocks and wrapper queries', () => {

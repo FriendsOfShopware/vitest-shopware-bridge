@@ -53,14 +53,18 @@ export async function mountShopwareComponent(
     componentName: string,
     options: ComponentMountingOptions<any> = {},
 ): Promise<VueWrapper> {
-    return mount(await buildShopwareComponent(componentName), options);
+    const component = await buildShopwareComponent(componentName);
+    getRuntime().prepareMount();
+    return mount(component, options);
 }
 
 export async function shallowMountShopwareComponent(
     componentName: string,
     options: ComponentMountingOptions<any> = {},
 ): Promise<VueWrapper> {
-    return shallowMount(await buildShopwareComponent(componentName), options);
+    const component = await buildShopwareComponent(componentName);
+    getRuntime().prepareMount();
+    return shallowMount(component, options);
 }
 
 export function mockShopwareService<T>(name: string, implementation: T): () => void {

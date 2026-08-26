@@ -39,7 +39,7 @@ The state transition is a compatibility boundary the bridge must hide:
 | Entry-point registration | Boot the real registries | Import the extension entry point and assert its public registrations |
 | Shopware components | Load core dependencies, build inheritance/overrides, mount or shallow-mount | Component props and domain stubs |
 | Plain Vue components and mixins | Vue SFC compiler and Vue Test Utils exports | Direct `mount()`/`shallowMount()` choice |
-| Pinia/Vuex state | Fresh Pinia and legacy-state restoration before each test | Store-specific initial values |
+| Pinia/Vuex state | Real context/session/system stores plus fresh Pinia and legacy-state restoration before each test | Store-specific initial values |
 | Shopware services | Dependency injection, scoped replacement and restoration | Service-specific return values |
 | DAL repositories | Predictable typed repository doubles and entity routing | Entity data and criteria assertions |
 | API services | Correct Shopware context | HTTP fixtures and `axios-mock-adapter` scenarios |
@@ -77,9 +77,9 @@ matrix.
 | SVG imports | SVG files are exported as their exact UTF-8 source string by the bridge-owned adapter | Golden adapter test and exact `test-icon.svg` integration assertion |
 | Twig comment parity | The bridge-owned adapter removes HTML and Twig comments, including unclosed comments, and preserves every other byte | Golden adapter tests and exact rendered Twig fixture |
 | Service injection | Every registered service is copied into Vue Test Utils `global.provide` | Injected-service integration component |
-| Shopware directives/plugins | Mixins, directives and filters are imported from source; Pinia, i18n, Shopware plugins and block data scope are installed globally | Global setup integration assertions and core component loading |
-| Standard context | API/session defaults and `$router`, `$route`, `$device`, i18n and sanitizer mocks are installed | Context and global-mock integration assertions |
-| Fresh state | Pinia is replaced and legacy Vuex state restored before every test and on explicit reset | State-reset integration assertion on 6.6 and 6.7 |
+| Shopware directives/plugins | Mixins, directives and filters are imported from source; Pinia, synchronized i18n, Shopware plugins and block data scope are installed globally | Global setup integration assertions and core component loading |
+| Standard context | Real context/session/system stores, API/session defaults, standard locales and `$router`, `$route`, `$device`, i18n and sanitizer mocks are installed | Store, locale, context and global-mock integration assertions |
+| Fresh state | Pinia is replaced and legacy Vuex, context and locale state are restored before every test and on explicit reset | State-reset integration assertion on 6.6 and 6.7 |
 | Scoped service replacement | The bridge safely rebinds Bottle's nested service container and restores the exact previous instance | Service replacement/injection integration tests |
 | Core components for extension overrides | A read-only source scanner builds component loaders without Shopware's generated private test map and recursively loads base components | Real `sw-button` override plus `sw-entity-listing`/`sw-data-grid` chain on 6.6 and 6.7 |
 | Unexpected console output | Opt-in strict mode records warnings/errors, fails after the test and supports explicit allowances | Unit guard test and strict integration suite |
