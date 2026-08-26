@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
     buildComponentImportMap,
+    shopwareBridgePlugin,
     shopwareSetupSfcPlugin,
 } from '../../src/plugins.js';
 
@@ -56,5 +57,28 @@ describe('Shopware integration plugins', () => {
             '/extension/component.vue',
         );
         expect(result.code).toContain('transformed');
+    });
+
+    it('generates a core-store bootstrap from the modules present in the Administration version', async () => {
+        const administration = mkdtempSync(path.join(tmpdir(), 'shopware-core-stores-'));
+        const contextStore = path.join(administration, 'src/app/store/context.store.ts');
+        const systemStore = path.join(administration, 'src/app/store/system.store.js');
+        mkdirSync(path.dirname(contextStore), { recursive: true });
+        writeFileSync(contextStore, 'export default true;');
+        writeFileSync(systemStore, 'export default true;');
+
+        const plugin = shopwareBridgePlugin({
+            path: administration,
+            version: '6.7',
+            packageJsonPath: path.join(administration, 'package.json'),
+            nodeModulesPath: path.join(administration, 'node_modules'),
+        });
+        const virtualId = 'virtual:vitest-shopware-admin-bridge/core-stores';
+        const resolved = await (plugin.resolveId as Function).call({}, virtualId);
+        const source = await (plugin.load as Function).call({}, resolved);
+
+        expect(source).toContain(contextStore);
+        expect(source).toContain(systemStore);
+        expect(source).not.toContain('session.store');
     });
 });

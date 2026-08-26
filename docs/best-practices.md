@@ -174,8 +174,9 @@ Do not depend on the default allow-all ACL in a permission test. Do not toggle
 Shopware's private feature structures directly when `setFeatureFlags()` covers
 the public behavior.
 
-The bridge creates fresh Pinia state, restores legacy Vuex state, resets context
-and reinstalls default service behavior before every test. Use
+The bridge boots the real context/session/system stores, creates fresh Pinia
+state, restores legacy Vuex state, resets context and locales, and reinstalls
+default service behavior before every test. Use
 `resetShopwareTestState()` inside a test only when that reset is itself part of
 the scenario; routine cleanup belongs to the automatic lifecycle.
 

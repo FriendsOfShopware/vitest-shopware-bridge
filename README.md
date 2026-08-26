@@ -82,8 +82,9 @@ The configuration installs:
 - Vue SFC compilation and the Administration-native setup transform when present;
 - Twig, SCSS/CSS/Less and SVG handling;
 - real Shopware component, mixin, directive, filter, state and service registries;
+- the real context, session and system stores (Pinia on 6.7, legacy Vuex on 6.6);
 - fresh Pinia and legacy Vuex state for every test;
-- Vue Test Utils plugins, dependency injection, i18n and standard Administration mocks.
+- Vue Test Utils plugins, dependency injection, synchronized locales/i18n and standard Administration mocks.
 
 ## Component tests
 
@@ -177,8 +178,9 @@ the wrong fixture.
 
 ## Context and state
 
-`setShopwareContext()` updates both `Shopware.Context.api` and the registered
-context/session stores where available:
+`setShopwareContext()` updates `Shopware.Context.api` and the real
+context/session/system stores. The bridge boots the Pinia stores used by
+Shopware 6.7 and keeps the legacy Vuex stores working on 6.6:
 
 ```ts
 setShopwareContext({
@@ -187,9 +189,14 @@ setShopwareContext({
 });
 ```
 
+The standard `en-GB` and `de-DE` locales are registered before extension code
+runs. Locale messages added through Shopware's locale factory are synchronized
+to the Vue i18n instance before `mountShopwareComponent()` and
+`shallowMountShopwareComponent()` mount a component.
+
 State is reset automatically. `resetShopwareTestState()` is available when a
-single test needs to return to the default API context, services and a fresh
-Pinia explicitly.
+single test needs to return to the default API context, locale state, services
+and a fresh Pinia explicitly.
 
 ## Vue wrapper queries and Meteor interaction
 

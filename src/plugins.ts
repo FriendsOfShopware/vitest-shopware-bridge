@@ -32,6 +32,7 @@ const OPTIONAL_ADMIN_MODULES: Record<string, string> = {
 
 const COMPONENT_LOADERS_ID = 'virtual:vitest-shopware-admin-bridge/component-loaders';
 const RUNTIME_OPTIONS_ID = 'virtual:vitest-shopware-admin-bridge/runtime-options';
+const CORE_STORES_ID = 'virtual:vitest-shopware-admin-bridge/core-stores';
 const EMPTY_PLUGIN_ID = '\0vitest-shopware-admin-bridge:empty-plugin';
 const EMPTY_DATA_SCOPE_ID = '\0vitest-shopware-admin-bridge:empty-data-scope';
 
@@ -166,6 +167,15 @@ function componentLoadersModule(administrationPath: string): string {
     return `export default {${entries.join(',\n')}};`;
 }
 
+function coreStoresModule(administrationPath: string): string {
+    const imports = ['context', 'session', 'system']
+        .map((name) => resolveExistingModule(path.join(administrationPath, `src/app/store/${name}.store`)))
+        .filter((storePath) => existsSync(storePath))
+        .map((storePath) => `import ${JSON.stringify(`/@fs/${storePath.replaceAll('\\', '/')}`)};`);
+
+    return `${imports.join('\n')}\nexport default true;`;
+}
+
 function registrationModule(administrationPath: string, relativeDirectory: string): string {
     const directory = path.join(administrationPath, relativeDirectory);
     const files = sourceFiles(directory).filter((file) =>
@@ -248,7 +258,7 @@ export function shopwareBridgePlugin(
                 return `\0${source}`;
             }
 
-            if (source === COMPONENT_LOADERS_ID || source === RUNTIME_OPTIONS_ID) {
+            if (source === COMPONENT_LOADERS_ID || source === RUNTIME_OPTIONS_ID || source === CORE_STORES_ID) {
                 return `\0${source}`;
             }
 
@@ -276,6 +286,10 @@ export function shopwareBridgePlugin(
 
             if (id === `\0${COMPONENT_LOADERS_ID}`) {
                 return componentLoadersModule(administration.path);
+            }
+
+            if (id === `\0${CORE_STORES_ID}`) {
+                return coreStoresModule(administration.path);
             }
 
             const registrationSource = id.startsWith('\0') ? id.slice(1) : '';

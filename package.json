@@ -1,6 +1,6 @@
 {
     "name": "@friendsofshopware/vitest-shopware-admin-bridge",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Vitest bridge for Shopware 6 Administration extensions",
     "type": "module",
     "license": "MIT",

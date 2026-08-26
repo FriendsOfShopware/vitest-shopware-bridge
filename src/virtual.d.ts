@@ -20,6 +20,11 @@ declare module 'virtual:vitest-shopware-admin-bridge/runtime-options' {
     export default options;
 }
 
+declare module 'virtual:vitest-shopware-admin-bridge/core-stores' {
+    const initialized: true;
+    export default initialized;
+}
+
 declare module 'virtual:vitest-shopware-admin-bridge/virtual-call-stack-plugin' {
     const plugin: any;
     export default plugin;
