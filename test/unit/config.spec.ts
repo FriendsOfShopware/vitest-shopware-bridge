@@ -72,6 +72,7 @@ describe('defineShopwareConfig', () => {
             src: expect.stringContaining('/src'),
             vue: expect.stringContaining('/node_modules/vue/'),
         });
+        expect(config.ssr.noExternal).toContain('@friendsofshopware/vitest-shopware-bridge');
     });
 
     it('uses the Vue compatibility runtime for Shopware 6.6', () => {

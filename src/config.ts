@@ -68,6 +68,9 @@ export function defineShopwareConfig(options: ShopwareVitestOptions = {}): ViteU
             alias: aliases,
             dedupe: ['vue', 'pinia', 'vue-router', 'vue-i18n'],
         },
+        ssr: {
+            noExternal: ['@friendsofshopware/vitest-shopware-bridge'],
+        },
         server: {
             fs: {
                 allow: [cwd, administration.path],
@@ -111,6 +114,16 @@ export function defineShopwareConfig(options: ShopwareVitestOptions = {}): ViteU
             ...merged.server?.fs,
             allow: [...new Set([...toArray(consumerConfig.server?.fs?.allow), cwd, administration.path])],
         },
+    };
+    const noExternal = merged.ssr?.noExternal;
+    merged.ssr = {
+        ...merged.ssr,
+        noExternal: noExternal === true
+            ? true
+            : [...new Set([
+                ...toArray(noExternal),
+                '@friendsofshopware/vitest-shopware-bridge',
+            ])],
     };
 
     return merged;
