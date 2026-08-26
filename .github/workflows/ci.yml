@@ -35,6 +35,8 @@ jobs:
             ref: v6.6.10.23
           - shopware: '6.7'
             ref: v6.7.13.1
+          - shopware: 'trunk'
+            ref: trunk
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -57,22 +59,3 @@ jobs:
       - run: npm run test:integration
         env:
           SHOPWARE_ADMINISTRATION_PATH: ${{ github.workspace }}/.shopware/administration/Resources/app/administration
-
-  publish:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [unit, integration]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-      - run: npm ci
-      - run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-

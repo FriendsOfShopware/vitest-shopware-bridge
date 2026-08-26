@@ -3,14 +3,21 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { UserConfig } from 'vite';
 import { mergeConfig, type ViteUserConfigExport } from 'vitest/config';
+import vue from '@vitejs/plugin-vue';
 import {
     resolveAdministration,
     resolveAdministrationPackage,
     type ResolveAdministrationOptions,
 } from './discovery.js';
-import { shopwareBridgePlugin } from './plugins.js';
+import { shopwareBridgePlugin, shopwareSetupSfcPlugin } from './plugins.js';
+
+export interface ShopwareRuntimeOptions {
+    /** Fail a test when it emits an unexpected console warning or error. */
+    strictConsole?: boolean;
+}
 
 export interface ShopwareVitestOptions extends ResolveAdministrationOptions {
+    runtime?: ShopwareRuntimeOptions;
     vitest?: UserConfig;
 }
 
@@ -35,17 +42,28 @@ export function defineShopwareConfig(options: ShopwareVitestOptions = {}): ViteU
     process.env.VITEST_SHOPWARE_ADMINISTRATION_PATH = administration.path;
     process.env.VITEST_SHOPWARE_VERSION = administration.version;
 
+    const vueRuntime = administration.version === '6.6'
+        ? resolveAdministrationPackage(administration, '@vue/compat/dist/vue.esm-bundler.js')
+        : resolveAdministrationPackage(administration, 'vue');
     const aliases = {
         src: path.join(administration.path, 'src'),
-        vue: resolveAdministrationPackage(administration, 'vue'),
+        vue: vueRuntime,
         pinia: resolveAdministrationPackage(administration, 'pinia'),
+        'vue-i18n': resolveAdministrationPackage(administration, 'vue-i18n'),
+        'vue-router': resolveAdministrationPackage(administration, 'vue-router'),
         '@vue/test-utils': resolveAdministrationPackage(administration, '@vue/test-utils'),
     };
+
+    const setupSfcPlugin = shopwareSetupSfcPlugin(administration);
 
     const baseConfig: UserConfig = {
         root: cwd,
         logLevel: 'error',
-        plugins: [shopwareBridgePlugin(administration)],
+        plugins: [
+            ...(setupSfcPlugin ? [setupSfcPlugin] : []),
+            vue(),
+            shopwareBridgePlugin(administration, options.runtime),
+        ],
         resolve: {
             alias: aliases,
             dedupe: ['vue', 'pinia', 'vue-router', 'vue-i18n'],

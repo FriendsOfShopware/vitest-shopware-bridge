@@ -10,7 +10,9 @@ function createAdministration(
     target?: string,
 ): string {
     const administrationPath = target ?? mkdtempSync(path.join(tmpdir(), `shopware-${version}-`));
-    const dependencies = version === '6.7' ? { vite: '6.4.3' } : { webpack: '5.97.1' };
+    const dependencies = version === '6.7'
+        ? { vite: '6.4.3' }
+        : { vite: '5.4.0', webpack: '5.97.1', '@vue/compat': '3.4.0' };
 
     mkdirSync(administrationPath, { recursive: true });
     writeFileSync(path.join(administrationPath, 'package.json'), JSON.stringify({ name: 'administration', dependencies }));
@@ -26,7 +28,16 @@ function createAdministration(
     }
 
     if (withDependencies) {
-        for (const packageName of ['vue', 'pinia', '@vue/test-utils', 'twig']) {
+        const packages = [
+            'vue',
+            'pinia',
+            'vue-i18n',
+            'vue-router',
+            '@vue/test-utils',
+            'twig',
+            ...(version === '6.6' ? ['@vue/compat'] : []),
+        ];
+        for (const packageName of packages) {
             const packageFile = path.join(administrationPath, 'node_modules', packageName, 'package.json');
             mkdirSync(path.dirname(packageFile), { recursive: true });
             writeFileSync(packageFile, JSON.stringify({ name: packageName, version: '1.0.0', main: 'index.js' }));

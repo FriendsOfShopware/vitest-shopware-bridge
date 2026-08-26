@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, vi, type Mock } from 'vitest';
 import { createApp } from 'vue';
+import { createPinia, setActivePinia, type Pinia } from 'pinia';
+import { createI18n } from 'vue-i18n';
 import { config, enableAutoUnmount } from '@vue/test-utils';
+import componentLoaders from 'virtual:vitest-shopware-bridge/component-loaders';
+import runtimeOptions from 'virtual:vitest-shopware-bridge/runtime-options';
+import { createConsoleGuard, type ConsoleMessagePattern, type GuardedConsoleMethod } from './console.js';
 
 type ServiceMock = Record<string, Mock>;
 
@@ -11,36 +16,77 @@ export interface ShopwareTestServices {
     userConfigService: ServiceMock;
 }
 
+export interface ShopwareTestContext {
+    api?: Record<string, unknown>;
+    session?: {
+        locales?: string[];
+        locale?: string;
+        languageId?: string;
+    };
+}
+
+export interface ShopwareBridgeRuntime {
+    services: ShopwareTestServices;
+    loadComponent(componentName: string): Promise<void>;
+    mockService<T>(name: string, implementation: T): () => void;
+    reset(): void;
+    setAclRoles(roles: readonly string[] | null): void;
+    setFeatureFlags(flags: readonly string[]): void;
+    setContext(context: ShopwareTestContext): void;
+    allowConsole(pattern: ConsoleMessagePattern, method?: GuardedConsoleMethod | 'both'): void;
+}
+
 declare global {
-    // The actual Shopware type is supplied by an extension's Administration typings.
+    // The exact type is supplied by an extension's Administration typings.
     // eslint-disable-next-line no-var
     var Shopware: any;
 }
 
-const SERVICE_SYMBOL = Symbol.for('vitest-shopware-bridge.services');
+export const RUNTIME_SYMBOL = Symbol.for('vitest-shopware-bridge.runtime');
 const shopwareVersion = process.env.VITEST_SHOPWARE_VERSION;
-const featureFlags = shopwareVersion === '6.6' ? { ADMIN_VITE: true } : {};
+const buildFeatureFlags: Record<string, boolean> = shopwareVersion === '6.6' ? { ADMIN_VITE: true } : {};
 
 Object.assign(globalThis, {
-    _features_: featureFlags,
+    _features_: buildFeatureFlags,
     startApplication: () => {},
 });
-
 Object.assign(window, {
     _features_: (globalThis as any)._features_,
     startApplication: (globalThis as any).startApplication,
 });
-
 Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
     value: window.localStorage,
 });
 
-const { ShopwareInstance } = await import('virtual:vitest-shopware-bridge/admin-core');
+if (typeof globalThis.structuredClone === 'undefined') {
+    globalThis.structuredClone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+}
+if (typeof Element.prototype.scrollIntoView === 'undefined') {
+    Element.prototype.scrollIntoView = () => {};
+}
+if (typeof window.matchMedia === 'undefined') {
+    window.matchMedia = ((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+    })) as typeof window.matchMedia;
+}
 
+const { ShopwareInstance } = await import('virtual:vitest-shopware-bridge/admin-core');
 globalThis.Shopware = ShopwareInstance;
 (window as any).Shopware = ShopwareInstance;
-createApp({}).use(ShopwareInstance.Store._rootState);
+
+let currentPinia: Pinia | null = ShopwareInstance.Store?._rootState ?? null;
+if (currentPinia) {
+    createApp({}).use(currentPinia);
+    setActivePinia(currentPinia);
+}
 
 for (const moduleName of [
     'virtual:vitest-shopware-bridge/mixins',
@@ -61,37 +107,151 @@ const services: ShopwareTestServices = {
     repositoryFactory: { create: vi.fn() },
     userConfigService: { search: vi.fn(), upsert: vi.fn() },
 };
+let aclRoles: Set<string> | null = null;
+let activeFeatureFlags = new Set<string>();
 
 function resetServiceDefaults(): void {
-    services.acl.can.mockReset().mockReturnValue(true);
-    services.feature.isActive.mockReset().mockReturnValue(false);
-    services.repositoryFactory.create.mockReset().mockReturnValue({
-        create: vi.fn(),
-        get: vi.fn(),
+    aclRoles = null;
+    activeFeatureFlags = new Set();
+    services.acl.can.mockReset().mockImplementation((privilege?: string) =>
+        !privilege || aclRoles === null || aclRoles.has(privilege));
+    services.feature.isActive.mockReset().mockImplementation((flag: string) => activeFeatureFlags.has(flag));
+    services.repositoryFactory.create.mockReset().mockImplementation(() => ({
+        create: vi.fn(() => ({})),
+        get: vi.fn().mockResolvedValue(null),
         search: vi.fn().mockResolvedValue({ data: [], total: 0 }),
-    });
+        save: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+    }));
     services.userConfigService.search.mockReset().mockResolvedValue({ data: {} });
     services.userConfigService.upsert.mockReset().mockResolvedValue(undefined);
 }
 
+function registerDefaultServices(): void {
+    bindService('acl', services.acl);
+    bindService('feature', services.feature);
+    bindService('repositoryFactory', services.repositoryFactory);
+    bindService('userConfigService', services.userConfigService);
+    ShopwareInstance.Feature = services.feature;
+}
+
+function serviceBottle(): any | null {
+    return ShopwareInstance.Application.$container.nested.service ?? null;
+}
+
+function removeServiceBinding(name: string): void {
+    const bottle = serviceBottle();
+    if (!bottle) return;
+    Reflect.deleteProperty(bottle.container, name);
+    Reflect.deleteProperty(bottle.container, `${name}Provider`);
+    Reflect.deleteProperty(bottle.providerMap, name);
+    Reflect.deleteProperty(bottle.originalProviders, name);
+}
+
+function bindService<T>(name: string, implementation: T): void {
+    let bottle = serviceBottle();
+    if (!bottle) {
+        ShopwareInstance.Service().register(name, () => implementation);
+        return;
+    }
+    removeServiceBinding(name);
+    bottle = serviceBottle();
+    bottle.factory(name, () => implementation);
+}
+
 resetServiceDefaults();
+registerDefaultServices();
 
-const serviceRegistry = ShopwareInstance.Service();
-serviceRegistry.register('acl', () => services.acl);
-serviceRegistry.register('feature', () => services.feature);
-serviceRegistry.register('repositoryFactory', () => services.repositoryFactory);
-serviceRegistry.register('userConfigService', () => services.userConfigService);
-
-(globalThis as any)[SERVICE_SYMBOL] = services;
-
-config.global.mocks = {
-    ...config.global.mocks,
-    $sanitize: (value: string) => value,
-    $t: (key: string) => key,
-    $tc: (key: string) => key,
-    $te: () => true,
+const DEFAULT_API_CONTEXT = {
+    installationPath: '',
+    apiPath: '/api',
+    apiResourcePath: '/api/v3',
+    assetsPath: '',
+    languageId: '2fbb5fe2e29a4d70aa5854ce7ce3e20b',
+    systemLanguageId: '2fbb5fe2e29a4d70aa5854ce7ce3e20b',
+    liveVersionId: '0fa91ce3e96a4bc2be4bd9ce752c3425',
+    inheritance: false,
+};
+const DEFAULT_SESSION_CONTEXT = {
+    locales: ['en-GB'],
+    locale: 'en-GB',
+    languageId: DEFAULT_API_CONTEXT.languageId,
 };
 
+function getStore(name: string): any | null {
+    try {
+        return ShopwareInstance.Store?.get(name) ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function applyContext(context: ShopwareTestContext = {}): void {
+    const api = { ...DEFAULT_API_CONTEXT, ...(context.api ?? {}) };
+    if (ShopwareInstance.Context?.api) {
+        Object.assign(ShopwareInstance.Context.api, api);
+    }
+    const contextStore = getStore('context');
+    if (contextStore?.api) {
+        Object.assign(contextStore.api, api);
+    }
+
+    const session = { ...DEFAULT_SESSION_CONTEXT, ...(context.session ?? {}) };
+    const sessionStore = getStore('session');
+    if (typeof sessionStore?.setAdminLocaleState === 'function') {
+        sessionStore.setAdminLocaleState(session);
+    } else if (sessionStore) {
+        Object.assign(sessionStore, session);
+    }
+}
+
+ShopwareInstance.Application.view = {
+    setReactive: (target: Record<string, unknown>, propertyName: string, value: unknown) =>
+        (target[propertyName] = value),
+    deleteReactive(target: Record<string, unknown>, propertyName: string) {
+        delete target[propertyName];
+    },
+    root: { $t: (value: string) => value },
+    i18n: {
+        global: {
+            tc: (value: string) => value,
+            te: () => true,
+            t: (value: string) => value,
+        },
+    },
+};
+if (ShopwareInstance.Telemetry) {
+    ShopwareInstance.Telemetry.initialize = () => Promise.resolve();
+    ShopwareInstance.Telemetry.track = () => {};
+}
+
+const routerMock = {
+    replace: vi.fn(),
+    push: vi.fn(),
+    go: vi.fn(),
+    resolve: vi.fn(() => ({ matched: [] })),
+};
+const deviceMock = {
+    onResize: vi.fn(),
+    removeResizeListener: vi.fn(),
+    getSystemKey: vi.fn(() => 'CTRL'),
+    getViewportWidth: vi.fn(() => 1920),
+};
+
+(config as any).showDeprecationWarnings = true;
+config.global.config.compilerOptions = { ...config.global.config.compilerOptions, whitespace: 'preserve' };
+config.global.mocks = {
+    ...config.global.mocks,
+    $tc: (value: string) => value,
+    $t: (value: string) => value,
+    $te: () => true,
+    $sanitize: (value: string) => value,
+    $i18n: { locale: 'en-GB', fallbackLocale: 'en-GB', messages: { 'en-GB': {} } },
+    $device: deviceMock,
+    $router: routerMock,
+    $route: { params: {}, query: {} },
+    $store: ShopwareInstance.State?._store,
+};
 config.global.stubs = {
     ...config.global.stubs,
     'mt-button': true,
@@ -102,10 +262,175 @@ config.global.stubs = {
     'mt-text-field': true,
     'mt-textarea': true,
     'sw-entity-single-select': true,
-    'sw-modal': {
-        template: '<div class="sw-modal"><slot /><slot name="modal-footer" /></div>',
+    'sw-modal': { template: '<div class="sw-modal"><slot /><slot name="modal-footer" /></div>' },
+};
+
+const i18n = createI18n({
+    legacy: false,
+    locale: 'en-GB',
+    fallbackLocale: 'en-GB',
+    messages: {},
+    missing: (_locale, key) => key,
+});
+const virtualCallStackPlugin = (await import('virtual:vitest-shopware-bridge/virtual-call-stack-plugin')).default;
+const meteorSdkDataPlugin = (await import('virtual:vitest-shopware-bridge/meteor-sdk-data-plugin')).default;
+const getBlockDataScope = (await import('virtual:vitest-shopware-bridge/block-data-scope')).default;
+const blockDataScopePlugin = {
+    install(app: any) {
+        Object.defineProperty(app.config.globalProperties, '$dataScope', {
+            get: getBlockDataScope,
+            enumerable: true,
+        });
+    },
+};
+config.global.plugins = [
+    ...(currentPinia ? [currentPinia] : []),
+    virtualCallStackPlugin,
+    meteorSdkDataPlugin,
+    blockDataScopePlugin,
+    i18n,
+];
+
+const directiveRegistry = ShopwareInstance.Directive?.getDirectiveRegistry?.();
+directiveRegistry?.forEach((directive: unknown, name: string) => {
+    config.global.directives[name] = (['tooltip', 'popover'].includes(name) ? {} : directive) as any;
+});
+
+function syncProvidedServices(): void {
+    config.global.provide ??= {};
+    for (const serviceName of ShopwareInstance.Service().list()) {
+        config.global.provide[serviceName as string] = ShopwareInstance.Service(serviceName);
+    }
+}
+
+syncProvidedServices();
+applyContext();
+
+function cloneState<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value)) as T;
+}
+
+const legacyStore = ShopwareInstance.State?._store;
+const initialLegacyState = legacyStore?.state ? cloneState(legacyStore.state) : null;
+const serviceRestorers: Array<() => void> = [];
+
+function resetPinia(): void {
+    if (!ShopwareInstance.Store?._rootState) {
+        return;
+    }
+    const previous = currentPinia;
+    currentPinia = createPinia();
+    ShopwareInstance.Store._rootState = currentPinia;
+    setActivePinia(currentPinia);
+    config.global.plugins = [currentPinia, ...config.global.plugins.filter((plugin) => plugin !== previous)];
+}
+
+function restoreServices(): void {
+    for (const restore of serviceRestorers.splice(0).reverse()) {
+        restore();
+    }
+}
+
+async function loadComponent(componentName: string, chain = new Set<string>()): Promise<void> {
+    if (ShopwareInstance.Component.getComponentRegistry().has(componentName)) {
+        return;
+    }
+    if (chain.has(componentName)) {
+        throw new Error(`Circular Shopware component dependency: ${[...chain, componentName].join(' -> ')}`);
+    }
+
+    const loader = componentLoaders[componentName];
+    if (!loader) {
+        throw new Error(
+            `Shopware component "${componentName}" is not registered and no Administration source import was found. ` +
+            'Import the component explicitly before mounting it.',
+        );
+    }
+
+    chain.add(componentName);
+    if (loader.extends) {
+        await loadComponent(loader.extends, chain);
+    }
+    const imported = await loader.load();
+    if (!ShopwareInstance.Component.getComponentRegistry().has(componentName)) {
+        const definition = imported.default ?? imported;
+        if (loader.extends && loader.extend) {
+            ShopwareInstance.Component.extend(componentName, loader.extends, definition);
+        } else {
+            ShopwareInstance.Component.register(componentName, definition);
+        }
+    }
+    chain.delete(componentName);
+}
+
+const consoleGuard = runtimeOptions.strictConsole ? createConsoleGuard(console) : null;
+const runtime: ShopwareBridgeRuntime = {
+    services,
+    loadComponent,
+    mockService<T>(name: string, implementation: T): () => void {
+        const registry = ShopwareInstance.Service();
+        const hadPrevious = new Set<string>(registry.list()).has(name);
+        const previous = hadPrevious ? ShopwareInstance.Service(name) : undefined;
+        let restored = false;
+
+        bindService(name, implementation);
+        config.global.provide[name] = implementation as any;
+        const restore = () => {
+            if (restored) return;
+            restored = true;
+            if (hadPrevious) {
+                bindService(name, previous);
+                config.global.provide[name] = previous;
+            } else {
+                removeServiceBinding(name);
+                Reflect.deleteProperty(config.global.provide, name);
+            }
+        };
+        serviceRestorers.push(restore);
+        return restore;
+    },
+    reset() {
+        restoreServices();
+        resetPinia();
+        if (legacyStore && initialLegacyState && typeof legacyStore.replaceState === 'function') {
+            legacyStore.replaceState(cloneState(initialLegacyState));
+        }
+        resetServiceDefaults();
+        registerDefaultServices();
+        applyContext();
+        syncProvidedServices();
+        config.global.mocks.$store = ShopwareInstance.State?._store;
+    },
+    setAclRoles(roles) {
+        aclRoles = roles === null ? null : new Set(roles);
+    },
+    setFeatureFlags(flags) {
+        activeFeatureFlags = new Set(flags);
+        const featureTarget = (globalThis as any)._features_ as Record<string, boolean>;
+        for (const key of Object.keys(featureTarget)) {
+            if (!(key in buildFeatureFlags)) delete featureTarget[key];
+        }
+        Object.assign(featureTarget, buildFeatureFlags, Object.fromEntries(flags.map((flag) => [flag, true])));
+    },
+    setContext: applyContext,
+    allowConsole(pattern, method) {
+        if (!consoleGuard) {
+            throw new Error('Strict console mode is disabled. Enable runtime.strictConsole in defineShopwareConfig().');
+        }
+        consoleGuard.allow(pattern, method);
     },
 };
 
+(globalThis as any)[RUNTIME_SYMBOL] = runtime;
 enableAutoUnmount(afterEach);
-beforeEach(resetServiceDefaults);
+beforeEach(() => {
+    runtime.reset();
+    consoleGuard?.reset();
+});
+afterEach(() => {
+    try {
+        consoleGuard?.assert();
+    } finally {
+        restoreServices();
+    }
+});

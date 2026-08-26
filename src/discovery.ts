@@ -45,7 +45,14 @@ const REQUIRED_SOURCE_FILES = [
     'src/app/init/component-helper.init.ts',
 ];
 
-const REQUIRED_PACKAGES = ['vue', 'pinia', '@vue/test-utils', 'twig'];
+const REQUIRED_PACKAGES = [
+    'vue',
+    'pinia',
+    'vue-i18n',
+    'vue-router',
+    '@vue/test-utils',
+    'twig',
+];
 
 function isAdministrationRoot(candidate: string): boolean {
     return existsSync(path.join(candidate, 'package.json'))
@@ -64,6 +71,13 @@ function expandCandidate(candidate: string): string[] {
 }
 
 function detectVersion(packageJson: AdministrationPackageJson): SupportedShopwareVersion | null {
+    // Shopware 6.6 ships both webpack and an experimental Vite build. The
+    // Vue compatibility package is the reliable boundary between 6.6 and the
+    // native Vue 3 Administration introduced with 6.7.
+    if (packageJson.dependencies?.['@vue/compat'] || packageJson.devDependencies?.['@vue/compat']) {
+        return '6.6';
+    }
+
     if (packageJson.dependencies?.vite) {
         return '6.7';
     }
@@ -117,10 +131,11 @@ function collectCandidates(options: ResolveAdministrationOptions): string[] {
     return [...new Set(candidates.map((candidate) => path.resolve(candidate)))];
 }
 
-function missingPackages(administrationPath: string): string[] {
+function missingPackages(administrationPath: string, version: SupportedShopwareVersion): string[] {
     const require = createRequire(path.join(administrationPath, 'package.json'));
+    const packages = version === '6.6' ? [...REQUIRED_PACKAGES, '@vue/compat'] : REQUIRED_PACKAGES;
 
-    return REQUIRED_PACKAGES.filter((packageName) => {
+    return packages.filter((packageName) => {
         try {
             require.resolve(`${packageName}/package.json`);
             return false;
@@ -155,7 +170,7 @@ export function resolveAdministration(options: ResolveAdministrationOptions = {}
         );
     }
 
-    const missing = missingPackages(administrationPath);
+    const missing = missingPackages(administrationPath, version);
     if (missing.length > 0) {
         throw new ShopwareBridgeError(
             'ADMINISTRATION_DEPENDENCIES_MISSING',
@@ -183,4 +198,3 @@ export function resolveAdministrationPackage(
     const require = createRequire(administration.packageJsonPath);
     return require.resolve(packageName);
 }
-
