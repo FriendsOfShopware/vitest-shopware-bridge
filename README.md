@@ -9,6 +9,17 @@ The bridge currently supports Shopware 6.6 and 6.7. It also detects and uses
 the native Shopware setup-SFC transform when a newer Administration source tree
 ships it.
 
+## Documentation
+
+- [Set up a new Shopware plugin](docs/getting-started.md) covers the local file
+  layout, first tests, npm lockfiles, a Shopware-version CI matrix and an
+  optional release-artifact job.
+- [Testing best practices](docs/best-practices.md) explains which level of test
+  to choose, how to isolate Shopware state and which helpers belong in an
+  extension rather than the bridge.
+- [Shopware testing inventory](docs/testing-inventory.md) records the upstream
+  testing patterns and the bridge's compatibility boundary.
+
 ## Requirements
 
 - Shopware 6.6 or 6.7 Administration source and installed npm dependencies
@@ -21,13 +32,15 @@ installation, or an npm `administration` link. `SHOPWARE_ADMINISTRATION_PATH`
 and the legacy `ADMIN_PATH` can override discovery. Discovery is read-only: the
 bridge never downloads or modifies Shopware.
 
-## Setup before the first npm release
+## Quick start before the first npm release
 
 npm publishing is intentionally deferred. Install the Git repository; the
-consumer lockfile records the exact resolved commit:
+consumer lockfile records the exact resolved commit. See the
+[complete plugin setup guide](docs/getting-started.md) for Administration
+dependency installation and CI:
 
 ```bash
-npm install --save-dev vitest github:FriendsOfShopware/vitest-shopware-bridge
+npm install --save-dev vitest@4 github:FriendsOfShopware/vitest-shopware-bridge
 ```
 
 ```ts
