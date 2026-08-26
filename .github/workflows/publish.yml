@@ -1,0 +1,123 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  unit:
+    name: Verify package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run check
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Build package
+        run: npm run build
+
+      - name: Inspect package contents
+        run: npm pack --dry-run
+
+  integration:
+    name: Verify Shopware ${{ matrix.shopware }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shopware: '6.6'
+            ref: v6.6.10.23
+          - shopware: '6.7'
+            ref: v6.7.13.1
+          - shopware: 'trunk'
+            ref: trunk
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Checkout Shopware Administration
+        uses: actions/checkout@v7
+        with:
+          repository: shopware/administration
+          ref: ${{ matrix.ref }}
+          path: .shopware/administration
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install package dependencies
+        run: npm ci
+
+      - name: Install Shopware Administration dependencies
+        working-directory: .shopware/administration/Resources/app/administration
+        run: npm ci --ignore-scripts
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          SHOPWARE_ADMINISTRATION_PATH: ${{ github.workspace }}/.shopware/administration/Resources/app/administration
+
+  publish:
+    name: Publish to npm
+    needs: [unit, integration]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Node.js and npm registry
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install trusted-publishing npm version
+        run: npm install --global npm@^11.15.0
+
+      - name: Verify release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$RELEASE_TAG" != "v$PACKAGE_VERSION" ]]; then
+            echo "Release tag $RELEASE_TAG does not match package version $PACKAGE_VERSION."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish package
+        run: npm publish --access public

@@ -32,15 +32,14 @@ installation, or an npm `administration` link. `SHOPWARE_ADMINISTRATION_PATH`
 and the legacy `ADMIN_PATH` can override discovery. Discovery is read-only: the
 bridge never downloads or modifies Shopware.
 
-## Quick start before the first npm release
+## Quick start
 
-npm publishing is intentionally deferred. Install the Git repository; the
-consumer lockfile records the exact resolved commit. See the
+Install the published package and commit the resulting npm lockfile. See the
 [complete plugin setup guide](docs/getting-started.md) for Administration
 dependency installation and CI:
 
 ```bash
-npm install --save-dev vitest@4 github:FriendsOfShopware/vitest-shopware-admin-bridge
+npm install --save-dev vitest@4 @friendsofshopware/vitest-shopware-admin-bridge
 ```
 
 ```ts

@@ -32,14 +32,13 @@ AcmeExample/
 From `src/Resources/app/administration`, install Vitest and the bridge:
 
 ```bash
-npm install --save-dev vitest@4 github:FriendsOfShopware/vitest-shopware-admin-bridge
+npm install --save-dev vitest@4 @friendsofshopware/vitest-shopware-admin-bridge
 ```
 
-The bridge is installed from Git until its first npm release. Commit both
-`package.json` and `package-lock.json`: npm records the resolved bridge commit
-in the lockfile, and `npm ci` then reproduces it in CI. Do not delete and
-regenerate the lockfile merely to get a newer bridge commit; update the
-dependency deliberately and review the resulting lockfile diff.
+Commit both `package.json` and `package-lock.json`, then use `npm ci` locally and
+in CI. Do not delete and regenerate the lockfile merely to get a newer bridge
+version; update the dependency deliberately and review the resulting lockfile
+diff.
 
 Use these scripts in the Administration `package.json`:
 
@@ -54,7 +53,7 @@ Use these scripts in the Administration `package.json`:
         "test:unit:doctor": "vitest-shopware-admin-bridge doctor"
     },
     "devDependencies": {
-        "@friendsofshopware/vitest-shopware-admin-bridge": "github:FriendsOfShopware/vitest-shopware-admin-bridge",
+        "@friendsofshopware/vitest-shopware-admin-bridge": "^0.1.0",
         "vitest": "^4.0.0"
     }
 }
