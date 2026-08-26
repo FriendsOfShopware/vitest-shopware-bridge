@@ -1,0 +1,70 @@
+{
+    "name": "@friendsofshopware/vitest-shopware-bridge",
+    "version": "0.1.0",
+    "description": "Vitest bridge for Shopware 6 Administration extensions",
+    "type": "module",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/FriendsOfShopware/vitest-shopware-bridge.git"
+    },
+    "bugs": {
+        "url": "https://github.com/FriendsOfShopware/vitest-shopware-bridge/issues"
+    },
+    "homepage": "https://github.com/FriendsOfShopware/vitest-shopware-bridge#readme",
+    "keywords": [
+        "shopware",
+        "shopware-6",
+        "administration",
+        "vitest",
+        "vue-test-utils"
+    ],
+    "files": [
+        "dist",
+        "LICENSE",
+        "README.md"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./test-utils": {
+            "types": "./dist/test-utils.d.ts",
+            "import": "./dist/test-utils.js"
+        }
+    },
+    "bin": {
+        "vitest-shopware-bridge": "./dist/cli.js"
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "check": "tsc --noEmit -p tsconfig.json",
+        "test": "npm run test:unit",
+        "test:unit": "vitest run --config vitest.unit.config.ts",
+        "test:integration": "vitest run --config vitest.integration.config.ts",
+        "prepack": "npm run build"
+    },
+    "dependencies": {
+        "@vue/test-utils": "2.4.6",
+        "jsdom": "26.1.0",
+        "vue": "^3.5.13"
+    },
+    "peerDependencies": {
+        "vitest": "^4.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.7.0",
+        "vitest": "4.1.4"
+    },
+    "engines": {
+        "node": "^20.0.0 || ^21.0.0 || ^22.0.0 || ^23.0.0 || ^24.0.0",
+        "npm": ">=10.0.0"
+    },
+    "publishConfig": {
+        "access": "public",
+        "provenance": true
+    }
+}
+
