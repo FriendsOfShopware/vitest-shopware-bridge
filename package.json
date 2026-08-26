@@ -35,7 +35,7 @@
         }
     },
     "bin": {
-        "vitest-shopware-bridge": "./dist/cli.js"
+        "vitest-shopware-bridge": "dist/cli.js"
     },
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
@@ -67,4 +67,3 @@
         "provenance": true
     }
 }
-
