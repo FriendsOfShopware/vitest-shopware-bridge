@@ -62,10 +62,6 @@ jobs:
       - name: Install Shopware Administration dependencies
         working-directory: .shopware/administration/Resources/app/administration
         run: aube ci --ignore-scripts
-        env:
-          # Shopware pins SWC releases from publishing paths with inconsistent
-          # provenance metadata across the supported Administration versions.
-          AUBE_TRUST_POLICY_EXCLUDE: "@swc/core"
       - name: Run integration tests
         run: npm run test:integration
         env:
