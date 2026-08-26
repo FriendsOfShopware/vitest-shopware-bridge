@@ -39,7 +39,7 @@ The state transition is a compatibility boundary the bridge must hide:
 | Entry-point registration | Boot the real registries | Import the extension entry point and assert its public registrations |
 | Shopware components | Load core dependencies, build inheritance/overrides, mount or shallow-mount | Component props and domain stubs |
 | Plain Vue components and mixins | Vue SFC compiler and Vue Test Utils exports | Direct `mount()`/`shallowMount()` choice |
-| Pinia/Vuex state | Real context/session/system stores plus fresh Pinia and legacy-state restoration before each test | Store-specific initial values |
+| Pinia/Vuex state | Administration Pinia store initializer, explicit context and safe notification stores, plus fresh Pinia and legacy-state restoration before each test | Store-specific initial values |
 | Shopware services | Dependency injection, scoped replacement and restoration | Service-specific return values |
 | DAL repositories | Predictable typed repository doubles and entity routing | Entity data and criteria assertions |
 | API services | Correct Shopware context | HTTP fixtures and `axios-mock-adapter` scenarios |
@@ -82,6 +82,11 @@ matrix.
 | Fresh state | Pinia is replaced and legacy Vuex, context and locale state are restored before every test and on explicit reset | State-reset integration assertion on 6.6 and 6.7 |
 | Scoped service replacement | The bridge safely rebinds Bottle's nested service container and restores the exact previous instance | Service replacement/injection integration tests |
 | Core components for extension overrides | A read-only source scanner builds component loaders without Shopware's generated private test map and recursively loads base components | Real `sw-button` override plus `sw-entity-listing`/`sw-data-grid` chain on 6.6 and 6.7 |
+| Directory component imports | Import targets are resolved as files first and then through `index.js`/`index.ts`, so page and media overrides load their real parent | Directory-import scanner unit test |
+| Pinia store initialization | The 6.7 `store.init` registrations and explicit context store are loaded; a bridge-owned no-op notification store keeps notification mixins independent from workers and HTTP | Real store list plus created-hook notification integration test |
+| Layout component stubs | Common page/card wrappers preserve default and named content slots while non-layout controls stay lightweight | Named `sw-page` content integration test |
+| Lite runtime | `runtime.mode: 'lite'` retains core context/state while skipping component scanning and UI registries | Dedicated lite integration config on 6.6, 6.7 and trunk |
+| Component scan cache | Import maps are persisted per Administration Git revision, with uncached mode available for dirty source development | Cached and uncached scanner unit test |
 | Unexpected console output | Opt-in strict mode records warnings/errors, fails after the test and supports explicit allowances | Unit guard test and strict integration suite |
 
 ## Deliberate non-goals
@@ -94,5 +99,6 @@ releases. The bridge instead supplies the stable seams required to build those
 fixtures locally.
 
 The Administration source and npm dependencies remain external. Discovery is
-read-only, component scanning writes no generated files, and the bridge never
-downloads or modifies Shopware.
+read-only, component scanning writes no files into Shopware, and the bridge
+never downloads or modifies Shopware. Its import-map cache lives outside the
+Administration tree and can be disabled with `runtime.componentScanCache`.

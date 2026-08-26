@@ -1,9 +1,10 @@
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
     buildComponentImportMap,
+    loadComponentImportMap,
     shopwareBridgePlugin,
     shopwareSetupSfcPlugin,
 } from '../../src/plugins.js';
@@ -30,6 +31,19 @@ describe('Shopware integration plugins', () => {
                 extends: 'async-component',
                 extend: true,
             },
+        });
+    });
+
+    it('resolves component directory imports to their index module', () => {
+        const administration = mkdtempSync(path.join(tmpdir(), 'shopware-component-directory-'));
+        const source = path.join(administration, 'src/app/component/index.ts');
+        const componentIndex = path.join(administration, 'src/app/component/page/sw-settings-index/index.ts');
+        mkdirSync(path.dirname(componentIndex), { recursive: true });
+        writeFileSync(source, "Shopware.Component.register('sw-settings-index', () => import('./page/sw-settings-index'));\n");
+        writeFileSync(componentIndex, 'export default {};\n');
+
+        expect(buildComponentImportMap(administration)).toMatchObject({
+            'sw-settings-index': { path: componentIndex, register: true },
         });
     });
 
@@ -62,10 +76,11 @@ describe('Shopware integration plugins', () => {
     it('generates a core-store bootstrap from the modules present in the Administration version', async () => {
         const administration = mkdtempSync(path.join(tmpdir(), 'shopware-core-stores-'));
         const contextStore = path.join(administration, 'src/app/store/context.store.ts');
-        const systemStore = path.join(administration, 'src/app/store/system.store.js');
+        const storeInitializer = path.join(administration, 'src/app/init-pre/store.init.ts');
         mkdirSync(path.dirname(contextStore), { recursive: true });
+        mkdirSync(path.dirname(storeInitializer), { recursive: true });
         writeFileSync(contextStore, 'export default true;');
-        writeFileSync(systemStore, 'export default true;');
+        writeFileSync(storeInitializer, 'export default true;');
 
         const plugin = shopwareBridgePlugin({
             path: administration,
@@ -78,7 +93,43 @@ describe('Shopware integration plugins', () => {
         const source = await (plugin.load as Function).call({}, resolved);
 
         expect(source).toContain(contextStore);
-        expect(source).toContain(systemStore);
-        expect(source).not.toContain('session.store');
+        expect(source).toContain(storeInitializer);
+    });
+
+    it('does not build component loaders in lite mode', async () => {
+        const administration = mkdtempSync(path.join(tmpdir(), 'shopware-lite-runtime-'));
+        const plugin = shopwareBridgePlugin({
+            path: administration,
+            version: '6.7',
+            packageJsonPath: path.join(administration, 'package.json'),
+            nodeModulesPath: path.join(administration, 'node_modules'),
+        }, { mode: 'lite' });
+        const virtualId = 'virtual:vitest-shopware-admin-bridge/component-loaders';
+        const resolved = await (plugin.resolveId as Function).call({}, virtualId);
+
+        expect((plugin.load as Function).call({}, resolved)).toBe('export default {};');
+    });
+
+    it('persists the component import map per Administration revision', () => {
+        const administrationPath = mkdtempSync(path.join(tmpdir(), 'shopware-component-cache-'));
+        const cacheDirectory = mkdtempSync(path.join(tmpdir(), 'shopware-component-cache-data-'));
+        const source = path.join(administrationPath, 'src/app/component/index.ts');
+        mkdirSync(path.dirname(source), { recursive: true });
+        mkdirSync(path.join(administrationPath, '.git'), { recursive: true });
+        writeFileSync(path.join(administrationPath, '.git/HEAD'), '1111111111111111111111111111111111111111\n');
+        writeFileSync(source, "Shopware.Component.register('first-component', {});\n");
+        const administration = {
+            path: administrationPath,
+            version: '6.7' as const,
+            packageJsonPath: path.join(administrationPath, 'package.json'),
+            nodeModulesPath: path.join(administrationPath, 'node_modules'),
+        };
+
+        expect(loadComponentImportMap(administration, { cacheDirectory })).toHaveProperty('first-component');
+        writeFileSync(source, "Shopware.Component.register('second-component', {});\n");
+
+        expect(loadComponentImportMap(administration, { cacheDirectory })).toHaveProperty('first-component');
+        expect(loadComponentImportMap(administration, { cache: false })).toHaveProperty('second-component');
+        expect(readdirSync(cacheDirectory)).toHaveLength(1);
     });
 });

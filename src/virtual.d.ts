@@ -16,7 +16,7 @@ declare module 'virtual:vitest-shopware-admin-bridge/component-loaders' {
 }
 
 declare module 'virtual:vitest-shopware-admin-bridge/runtime-options' {
-    const options: { strictConsole: boolean };
+    const options: { strictConsole: boolean; mode: 'full' | 'lite' };
     export default options;
 }
 

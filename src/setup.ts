@@ -91,13 +91,45 @@ if (currentPinia) {
 
 await import('virtual:vitest-shopware-admin-bridge/core-stores');
 
-for (const moduleName of [
-    'virtual:vitest-shopware-admin-bridge/mixins',
-    'virtual:vitest-shopware-admin-bridge/directives',
-    'virtual:vitest-shopware-admin-bridge/filters',
-    'virtual:vitest-shopware-admin-bridge/state',
-    'virtual:vitest-shopware-admin-bridge/component-helper',
-]) {
+if (ShopwareInstance.Store?.list().includes('context') && !ShopwareInstance.Store.list().includes('notification')) {
+    ShopwareInstance.Store.register({
+        id: 'notification',
+        state: () => ({
+            notifications: {},
+            growlNotifications: {},
+            threshold: 5,
+            workerProcessPollInterval: 0,
+            transformers: {},
+        }),
+        actions: {
+            setThreshold: () => undefined,
+            setNotifications: () => undefined,
+            upsertNotification: () => undefined,
+            setAllNotificationsVisited: () => undefined,
+            upsertGrowlNotification: () => undefined,
+            createNotification: () => null,
+            createGrowlNotification: () => null,
+            updateNotification: () => null,
+            removeNotification: () => null,
+            removeGrowlNotification: () => null,
+            registerTransformer: () => undefined,
+            clearNotificationsForCurrentUser: () => undefined,
+            clearGrowlNotificationsForCurrentUser: () => undefined,
+        },
+    });
+}
+
+const administrationModules = runtimeOptions.mode === 'lite'
+    ? ['virtual:vitest-shopware-admin-bridge/state']
+    : [
+        'virtual:vitest-shopware-admin-bridge/mixins',
+        'virtual:vitest-shopware-admin-bridge/directives',
+        'virtual:vitest-shopware-admin-bridge/filters',
+        'virtual:vitest-shopware-admin-bridge/state',
+        'virtual:vitest-shopware-admin-bridge/component-helper',
+    ];
+
+for (const moduleName of administrationModules) {
     const module = await import(moduleName);
     if (typeof module.default === 'function') {
         module.default();
@@ -291,14 +323,31 @@ config.global.mocks = {
 config.global.stubs = {
     ...config.global.stubs,
     'mt-button': true,
+    'mt-banner': { template: '<div><slot /></div>' },
+    'mt-card': { template: '<div><slot /></div>' },
+    'mt-empty-state': { template: '<div><slot /></div>' },
     'mt-icon': true,
+    'mt-link': { template: '<a><slot /></a>' },
     'mt-number-field': true,
     'mt-select': true,
     'mt-switch': true,
     'mt-text-field': true,
     'mt-textarea': true,
+    'sw-card-view': { template: '<div><slot /></div>' },
     'sw-entity-single-select': true,
+    'sw-icon': true,
     'sw-modal': { template: '<div class="sw-modal"><slot /><slot name="modal-footer" /></div>' },
+    'sw-page': {
+        template: [
+            '<div>',
+            '<slot name="smart-bar-header" />',
+            '<slot name="smart-bar-actions" />',
+            '<slot name="content" />',
+            '<slot />',
+            '</div>',
+        ].join(''),
+    },
+    'sw-search-bar': { template: '<div><slot /></div>' },
 };
 
 const i18n = createI18n({
@@ -372,10 +421,12 @@ config.global.plugins = [
     i18n,
 ];
 
-const directiveRegistry = ShopwareInstance.Directive?.getDirectiveRegistry?.();
-directiveRegistry?.forEach((directive: unknown, name: string) => {
-    config.global.directives[name] = (['tooltip', 'popover'].includes(name) ? {} : directive) as any;
-});
+if (runtimeOptions.mode !== 'lite') {
+    const directiveRegistry = ShopwareInstance.Directive?.getDirectiveRegistry?.();
+    directiveRegistry?.forEach((directive: unknown, name: string) => {
+        config.global.directives[name] = (['tooltip', 'popover'].includes(name) ? {} : directive) as any;
+    });
+}
 
 function syncProvidedServices(): void {
     config.global.provide ??= {};

@@ -1,5 +1,15 @@
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    renameSync,
+    statSync,
+    writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Plugin } from 'vite';
 import { createJiti } from 'jiti';
@@ -35,6 +45,7 @@ const RUNTIME_OPTIONS_ID = 'virtual:vitest-shopware-admin-bridge/runtime-options
 const CORE_STORES_ID = 'virtual:vitest-shopware-admin-bridge/core-stores';
 const EMPTY_PLUGIN_ID = '\0vitest-shopware-admin-bridge:empty-plugin';
 const EMPTY_DATA_SCOPE_ID = '\0vitest-shopware-admin-bridge:empty-data-scope';
+const COMPONENT_MAP_CACHE_VERSION = 1;
 
 export interface ComponentImportInfo {
     path: string;
@@ -90,7 +101,7 @@ function resolveExistingModule(candidate: string): string {
         path.join(candidate, 'index.js'),
         path.join(candidate, 'index.ts'),
     ]) {
-        if (existsSync(resolved)) {
+        if (existsSync(resolved) && statSync(resolved).isFile()) {
             return resolved;
         }
     }
@@ -153,8 +164,144 @@ export function buildComponentImportMap(administrationPath: string): Record<stri
     return map;
 }
 
-function componentLoadersModule(administrationPath: string): string {
-    const entries = Object.entries(buildComponentImportMap(administrationPath)).map(([name, info]) => {
+function findGitDirectory(startPath: string): string | null {
+    let current = path.resolve(startPath);
+
+    while (true) {
+        const dotGit = path.join(current, '.git');
+        if (existsSync(dotGit)) {
+            if (statSync(dotGit).isDirectory()) {
+                return dotGit;
+            }
+
+            const match = readFileSync(dotGit, 'utf8').trim().match(/^gitdir:\s*(.+)$/);
+            if (match) {
+                return path.resolve(current, match[1]);
+            }
+        }
+
+        const parent = path.dirname(current);
+        if (parent === current) {
+            return null;
+        }
+        current = parent;
+    }
+}
+
+function readGitRevision(administrationPath: string): string | null {
+    const gitDirectory = findGitDirectory(administrationPath);
+    if (!gitDirectory) {
+        return null;
+    }
+
+    const headPath = path.join(gitDirectory, 'HEAD');
+    if (!existsSync(headPath)) {
+        return null;
+    }
+
+    const head = readFileSync(headPath, 'utf8').trim();
+    if (/^[a-f\d]{40}$/i.test(head)) {
+        return head;
+    }
+
+    const ref = head.match(/^ref:\s*(.+)$/)?.[1];
+    if (!ref) {
+        return head;
+    }
+
+    const roots = [gitDirectory];
+    const commonDirectoryPath = path.join(gitDirectory, 'commondir');
+    if (existsSync(commonDirectoryPath)) {
+        roots.push(path.resolve(gitDirectory, readFileSync(commonDirectoryPath, 'utf8').trim()));
+    }
+
+    for (const root of roots) {
+        const looseRef = path.join(root, ref);
+        if (existsSync(looseRef)) {
+            return readFileSync(looseRef, 'utf8').trim();
+        }
+
+        const packedRefs = path.join(root, 'packed-refs');
+        if (existsSync(packedRefs)) {
+            const match = readFileSync(packedRefs, 'utf8')
+                .split('\n')
+                .find((line) => line.endsWith(` ${ref}`));
+            if (match) {
+                return match.split(' ')[0];
+            }
+        }
+    }
+
+    return head;
+}
+
+function componentMapIdentity(administration: ResolvedAdministration): string {
+    const packageMtime = existsSync(administration.packageJsonPath)
+        ? statSync(administration.packageJsonPath).mtimeMs
+        : 0;
+    const revision = readGitRevision(administration.path);
+    if (revision) {
+        // Component loaders contain absolute source paths, so keep equal Git
+        // revisions from different worktrees isolated from one another.
+        return `git:${revision}:path:${path.resolve(administration.path)}:package-mtime:${packageMtime}`;
+    }
+
+    const sourceRoot = path.join(administration.path, 'src');
+    const sourceMtime = existsSync(sourceRoot) ? statSync(sourceRoot).mtimeMs : 0;
+    return `path:${administration.path}:version:${administration.version}:mtime:${packageMtime}:${sourceMtime}`;
+}
+
+export function loadComponentImportMap(
+    administration: ResolvedAdministration,
+    options: { cache?: boolean; cacheDirectory?: string } = {},
+): Record<string, ComponentImportInfo> {
+    if (options.cache === false) {
+        return buildComponentImportMap(administration.path);
+    }
+
+    const identity = componentMapIdentity(administration);
+    const cacheDirectory = options.cacheDirectory ?? path.join(
+        process.env.VITEST_SHOPWARE_ADMIN_BRIDGE_CACHE_DIR ?? tmpdir(),
+        'vitest-shopware-admin-bridge',
+        'component-imports',
+    );
+    const cacheKey = createHash('sha256')
+        .update(`${COMPONENT_MAP_CACHE_VERSION}:${identity}`)
+        .digest('hex');
+    const cachePath = path.join(cacheDirectory, `${cacheKey}.json`);
+
+    try {
+        const cached = JSON.parse(readFileSync(cachePath, 'utf8')) as {
+            version: number;
+            identity: string;
+            imports: Record<string, ComponentImportInfo>;
+        };
+        if (cached.version === COMPONENT_MAP_CACHE_VERSION && cached.identity === identity) {
+            return cached.imports;
+        }
+    } catch {
+        // A missing or corrupt cache is equivalent to a cold start.
+    }
+
+    const imports = buildComponentImportMap(administration.path);
+    try {
+        mkdirSync(cacheDirectory, { recursive: true });
+        const temporaryPath = `${cachePath}.${process.pid}.tmp`;
+        writeFileSync(temporaryPath, JSON.stringify({
+            version: COMPONENT_MAP_CACHE_VERSION,
+            identity,
+            imports,
+        }));
+        renameSync(temporaryPath, cachePath);
+    } catch {
+        // Cache writes are an optimization and must never block test startup.
+    }
+
+    return imports;
+}
+
+function componentLoadersModule(administration: ResolvedAdministration, cache: boolean): string {
+    const entries = Object.entries(loadComponentImportMap(administration, { cache })).map(([name, info]) => {
         const importPath = info.path.startsWith('.') || path.isAbsolute(info.path)
             ? `/@fs/${info.path.replaceAll('\\', '/')}`
             : info.path;
@@ -168,8 +315,15 @@ function componentLoadersModule(administrationPath: string): string {
 }
 
 function coreStoresModule(administrationPath: string): string {
-    const imports = ['context', 'session', 'system']
-        .map((name) => resolveExistingModule(path.join(administrationPath, `src/app/store/${name}.store`)))
+    const contextStore = resolveExistingModule(path.join(administrationPath, 'src/app/store/context.store'));
+    if (!existsSync(contextStore)) {
+        return 'export default true;';
+    }
+
+    const imports = [
+        resolveExistingModule(path.join(administrationPath, 'src/app/init-pre/store.init')),
+        contextStore,
+    ]
         .filter((storePath) => existsSync(storePath))
         .map((storePath) => `import ${JSON.stringify(`/@fs/${storePath.replaceAll('\\', '/')}`)};`);
 
@@ -285,7 +439,10 @@ export function shopwareBridgePlugin(
             }
 
             if (id === `\0${COMPONENT_LOADERS_ID}`) {
-                return componentLoadersModule(administration.path);
+                if (runtimeOptions.mode === 'lite') {
+                    return 'export default {};';
+                }
+                return componentLoadersModule(administration, runtimeOptions.componentScanCache !== false);
             }
 
             if (id === `\0${CORE_STORES_ID}`) {
@@ -298,7 +455,10 @@ export function shopwareBridgePlugin(
             }
 
             if (id === `\0${RUNTIME_OPTIONS_ID}`) {
-                return `export default ${JSON.stringify({ strictConsole: runtimeOptions.strictConsole === true })};`;
+                return `export default ${JSON.stringify({
+                    strictConsole: runtimeOptions.strictConsole === true,
+                    mode: runtimeOptions.mode ?? 'full',
+                })};`;
             }
 
             return null;

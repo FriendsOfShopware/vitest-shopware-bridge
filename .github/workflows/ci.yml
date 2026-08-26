@@ -16,16 +16,29 @@ jobs:
         node: [20, 22, 24]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - name: Checkout bridge
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
-      - run: npm run check
-      - run: npm run test:unit
-      - run: npm run build
-      - run: npm pack --dry-run
+
+      - name: Install bridge dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run check
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Build package
+        run: npm run build
+
+      - name: Inspect package tarball
+        run: npm pack --dry-run
 
   integration:
     strategy:
@@ -39,23 +52,33 @@ jobs:
             ref: trunk
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
+      - name: Checkout bridge
+        uses: actions/checkout@v7
+
+      - name: Checkout Shopware Administration ${{ matrix.shopware }}
+        uses: actions/checkout@v7
         with:
           repository: shopware/administration
           ref: ${{ matrix.ref }}
           path: .shopware/administration
-      - uses: actions/setup-node@v6
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: |
             package-lock.json
             .shopware/administration/Resources/app/administration/package-lock.json
-      - run: npm ci
+
+      - name: Install bridge dependencies
+        run: npm ci
+
       - name: Install Shopware Administration dependencies
         working-directory: .shopware/administration/Resources/app/administration
         run: npm ci --ignore-scripts
-      - run: npm run test:integration
+
+      - name: Run integration tests
+        run: npm run test:integration
         env:
           SHOPWARE_ADMINISTRATION_PATH: ${{ github.workspace }}/.shopware/administration/Resources/app/administration

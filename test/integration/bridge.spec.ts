@@ -87,6 +87,14 @@ describe('Shopware Vitest bridge', () => {
         });
     });
 
+    it('loads real Administration parents registered through directory imports', async () => {
+        await loadShopwareComponent('sw-settings-index');
+        await loadShopwareComponent('sw-media-upload-v2');
+
+        expect(Shopware.Component.getComponentRegistry().has('sw-settings-index')).toBe(true);
+        expect(Shopware.Component.getComponentRegistry().has('sw-media-upload-v2')).toBe(true);
+    });
+
     it('provides services to Vue injection and restores scoped service replacements', async () => {
         const originalAcl = Shopware.Service('acl');
         const replacement = { can: vi.fn(() => false) };
@@ -150,6 +158,46 @@ describe('Shopware Vitest bridge', () => {
         const wrapper = await mountShopwareComponent('bridge-locale-fixture');
 
         expect(wrapper.get('.bridge-locale').text()).toBe('Hallo');
+    });
+
+    it.runIf(process.env.VITEST_SHOPWARE_VERSION !== '6.6')(
+        'boots the Administration Pinia stores and a safe notification store',
+        async () => {
+            expect(Shopware.Store.list()).toEqual(expect.arrayContaining([
+                'context',
+                'notification',
+                'session',
+                'settingsItems',
+                'system',
+            ]));
+            expect(Shopware.Store.get('notification').createNotification({ message: 'ignored' })).toBeNull();
+
+            Shopware.Component.register('bridge-notification-fixture', {
+                mixins: [Shopware.Mixin.getByName('notification')],
+                template: '<span>ready</span>',
+                created() {
+                    this.createNotificationError({ message: 'expected test notification' });
+                },
+            });
+
+            await expect(mountShopwareComponent('bridge-notification-fixture')).resolves.toBeDefined();
+        },
+    );
+
+    it('renders named page slots and content-wrapper slots with the default layout stubs', async () => {
+        Shopware.Component.register('bridge-layout-fixture', {
+            template: [
+                '<sw-page>',
+                '<template #content>',
+                '<sw-card-view><mt-card><div class="bridge-layout-content">Visible</div></mt-card></sw-card-view>',
+                '</template>',
+                '</sw-page>',
+            ].join(''),
+        });
+
+        const wrapper = await mountShopwareComponent('bridge-layout-fixture');
+
+        expect(wrapper.get('.bridge-layout-content').text()).toBe('Visible');
     });
 
     it('creates predictable repository doubles and routes them by entity name', async () => {

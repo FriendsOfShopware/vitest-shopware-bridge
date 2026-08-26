@@ -102,6 +102,26 @@ export default defineShopwareConfig({
 Prefer the defaults at first. A custom `include` replaces the default patterns,
 so every intended test directory must be listed explicitly.
 
+For a large group of class or API-client tests, a second config can select the
+lite runtime. It keeps Shopware context, Pinia/Vuex state and service helpers,
+but skips component scanning and UI registry setup:
+
+```ts
+// vitest.lite.config.ts
+import { defineShopwareConfig } from '@friendsofshopware/vitest-shopware-admin-bridge';
+
+export default defineShopwareConfig({
+    runtime: { mode: 'lite', strictConsole: true },
+    vitest: {
+        test: { include: ['test/core/**/*.spec.ts'] },
+    },
+});
+```
+
+Run component tests with the normal config and the lighter group with
+`vitest run --config vitest.lite.config.ts`. Do not use lite mode for tests that
+need Administration components, mixins, directives or filters.
+
 ## 3. Install the local Shopware Administration dependencies
 
 The bridge needs the source and `node_modules` of the Shopware Administration
@@ -172,6 +192,11 @@ describe('acme-widget', () => {
     });
 });
 ```
+
+Common page and card layout components are stubbed by default while preserving
+their slots. In particular, `sw-page` renders its `content`,
+`smart-bar-header` and `smart-bar-actions` slots, so page content normally does
+not need a plugin-local wrapper-stub map.
 
 Run the suite from the plugin's Administration directory:
 
