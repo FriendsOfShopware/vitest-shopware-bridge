@@ -12,28 +12,28 @@ import type { ShopwareRuntimeOptions } from './config.js';
 import type { ResolvedAdministration } from './discovery.js';
 
 const ADMIN_MODULES: Record<string, string> = {
-    'virtual:vitest-shopware-bridge/admin-core': 'src/core/shopware.ts',
-    'virtual:vitest-shopware-bridge/state': 'src/app/init-pre/state.init',
-    'virtual:vitest-shopware-bridge/component-helper': 'src/app/init/component-helper.init',
+    'virtual:vitest-shopware-admin-bridge/admin-core': 'src/core/shopware.ts',
+    'virtual:vitest-shopware-admin-bridge/state': 'src/app/init-pre/state.init',
+    'virtual:vitest-shopware-admin-bridge/component-helper': 'src/app/init/component-helper.init',
 };
 
 const REGISTRATION_MODULES: Record<string, string> = {
-    'virtual:vitest-shopware-bridge/mixins': 'src/app/mixin',
-    'virtual:vitest-shopware-bridge/directives': 'src/app/directive',
-    'virtual:vitest-shopware-bridge/filters': 'src/app/filter',
+    'virtual:vitest-shopware-admin-bridge/mixins': 'src/app/mixin',
+    'virtual:vitest-shopware-admin-bridge/directives': 'src/app/directive',
+    'virtual:vitest-shopware-admin-bridge/filters': 'src/app/filter',
 };
 
 const OPTIONAL_ADMIN_MODULES: Record<string, string> = {
-    'virtual:vitest-shopware-bridge/virtual-call-stack-plugin': 'src/app/plugin/virtual-call-stack.plugin',
-    'virtual:vitest-shopware-bridge/meteor-sdk-data-plugin': 'src/app/plugin/meteor-sdk-data.plugin',
-    'virtual:vitest-shopware-bridge/block-data-scope':
+    'virtual:vitest-shopware-admin-bridge/virtual-call-stack-plugin': 'src/app/plugin/virtual-call-stack.plugin',
+    'virtual:vitest-shopware-admin-bridge/meteor-sdk-data-plugin': 'src/app/plugin/meteor-sdk-data.plugin',
+    'virtual:vitest-shopware-admin-bridge/block-data-scope':
         'src/app/component/structure/sw-block-override/sw-block/get-block-data-scope',
 };
 
-const COMPONENT_LOADERS_ID = 'virtual:vitest-shopware-bridge/component-loaders';
-const RUNTIME_OPTIONS_ID = 'virtual:vitest-shopware-bridge/runtime-options';
-const EMPTY_PLUGIN_ID = '\0vitest-shopware-bridge:empty-plugin';
-const EMPTY_DATA_SCOPE_ID = '\0vitest-shopware-bridge:empty-data-scope';
+const COMPONENT_LOADERS_ID = 'virtual:vitest-shopware-admin-bridge/component-loaders';
+const RUNTIME_OPTIONS_ID = 'virtual:vitest-shopware-admin-bridge/runtime-options';
+const EMPTY_PLUGIN_ID = '\0vitest-shopware-admin-bridge:empty-plugin';
+const EMPTY_DATA_SCOPE_ID = '\0vitest-shopware-admin-bridge:empty-data-scope';
 
 export interface ComponentImportInfo {
     path: string;
@@ -191,7 +191,7 @@ export function shopwareSetupSfcPlugin(administration: ResolvedAdministration): 
     let transformModule: TransformModule | null = null;
 
     return {
-        name: 'vitest-shopware-bridge:shopware-setup-sfc',
+        name: 'vitest-shopware-admin-bridge:shopware-setup-sfc',
         enforce: 'pre',
         transform(source, id) {
             const fileName = id.split('?')[0];
@@ -225,7 +225,7 @@ export function shopwareBridgePlugin(
     runtimeOptions: ShopwareRuntimeOptions = {},
 ): Plugin {
     return {
-        name: 'vitest-shopware-bridge',
+        name: 'vitest-shopware-admin-bridge',
         enforce: 'pre',
 
         resolveId(source) {
@@ -239,7 +239,7 @@ export function shopwareBridgePlugin(
                 if (existsSync(resolved)) {
                     return resolved;
                 }
-                return source === 'virtual:vitest-shopware-bridge/block-data-scope'
+                return source === 'virtual:vitest-shopware-admin-bridge/block-data-scope'
                     ? EMPTY_DATA_SCOPE_ID
                     : EMPTY_PLUGIN_ID;
             }

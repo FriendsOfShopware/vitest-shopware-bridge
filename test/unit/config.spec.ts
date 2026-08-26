@@ -72,7 +72,7 @@ describe('defineShopwareConfig', () => {
             src: expect.stringContaining('/src'),
             vue: expect.stringContaining('/node_modules/vue/'),
         });
-        expect(config.ssr.noExternal).toContain('@friendsofshopware/vitest-shopware-bridge');
+        expect(config.ssr.noExternal).toContain('@friendsofshopware/vitest-shopware-admin-bridge');
     });
 
     it('uses the Vue compatibility runtime for Shopware 6.6', () => {
@@ -81,7 +81,7 @@ describe('defineShopwareConfig', () => {
 
         expect(config.resolve.alias.vue).toContain('/node_modules/@vue/compat/');
         expect(config.plugins.map((plugin: { name: string }) => plugin.name)).toEqual(
-            expect.arrayContaining(['vite:vue', 'vitest-shopware-bridge']),
+            expect.arrayContaining(['vite:vue', 'vitest-shopware-admin-bridge']),
         );
     });
 });

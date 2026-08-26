@@ -32,7 +32,7 @@ AcmeExample/
 From `src/Resources/app/administration`, install Vitest and the bridge:
 
 ```bash
-npm install --save-dev vitest@4 github:FriendsOfShopware/vitest-shopware-bridge
+npm install --save-dev vitest@4 github:FriendsOfShopware/vitest-shopware-admin-bridge
 ```
 
 The bridge is installed from Git until its first npm release. Commit both
@@ -51,10 +51,10 @@ Use these scripts in the Administration `package.json`:
     "scripts": {
         "test:unit": "vitest run",
         "test:unit:watch": "vitest",
-        "test:unit:doctor": "vitest-shopware-bridge doctor"
+        "test:unit:doctor": "vitest-shopware-admin-bridge doctor"
     },
     "devDependencies": {
-        "@friendsofshopware/vitest-shopware-bridge": "github:FriendsOfShopware/vitest-shopware-bridge",
+        "@friendsofshopware/vitest-shopware-admin-bridge": "github:FriendsOfShopware/vitest-shopware-admin-bridge",
         "vitest": "^4.0.0"
     }
 }
@@ -68,7 +68,7 @@ shows the intended shape rather than replacing the generated lockfile.
 Create `src/Resources/app/administration/vitest.config.ts`:
 
 ```ts
-import { defineShopwareConfig } from '@friendsofshopware/vitest-shopware-bridge';
+import { defineShopwareConfig } from '@friendsofshopware/vitest-shopware-admin-bridge';
 
 export default defineShopwareConfig({
     runtime: {
@@ -160,7 +160,7 @@ the component by its registry name:
 import { describe, expect, it } from 'vitest';
 import {
     mountShopwareComponent,
-} from '@friendsofshopware/vitest-shopware-bridge/test-utils';
+} from '@friendsofshopware/vitest-shopware-admin-bridge/test-utils';
 import '../../src/main';
 
 describe('acme-widget', () => {
@@ -250,7 +250,7 @@ jobs:
 
       - name: Diagnose Shopware environment
         working-directory: src/Resources/app/administration
-        run: npx vitest-shopware-bridge doctor --json
+        run: npx vitest-shopware-admin-bridge doctor --json
 
       - name: Run Administration tests
         working-directory: src/Resources/app/administration
@@ -328,7 +328,7 @@ The artifact example uses Shopware's official
 - The Administration directory has `package.json`, `package-lock.json` and
   `vitest.config.ts`.
 - Both local Shopware and plugin dependencies were installed with `npm ci`.
-- `vitest-shopware-bridge doctor` reports the intended Administration path and
+- `vitest-shopware-admin-bridge doctor` reports the intended Administration path and
   Shopware minor.
 - Pure logic tests do not import the whole extension entry point.
 - Registration and component tests import the entry point deliberately.
@@ -343,7 +343,7 @@ The artifact example uses Shopware's official
 Run the doctor with the intended path:
 
 ```bash
-npx vitest-shopware-bridge doctor --admin-path /absolute/path/to/Resources/app/administration
+npx vitest-shopware-admin-bridge doctor --admin-path /absolute/path/to/Resources/app/administration
 ```
 
 Then export the same path as `SHOPWARE_ADMINISTRATION_PATH` for Vitest.

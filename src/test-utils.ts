@@ -178,7 +178,7 @@ export function findByPlaceholder(
         .find((element) => element.attributes('placeholder') === placeholder) ?? null;
 }
 
-const WRAPPER_PLUGIN_SYMBOL = Symbol.for('vitest-shopware-bridge.wrapper-plugin');
+const WRAPPER_PLUGIN_SYMBOL = Symbol.for('vitest-shopware-admin-bridge.wrapper-plugin');
 if (!(globalThis as any)[WRAPPER_PLUGIN_SYMBOL]) {
     config.plugins.VueWrapper.install((wrapper) => ({
         findByText: (selector: string, text: string) => findByText(wrapper, selector, text),

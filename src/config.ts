@@ -69,7 +69,7 @@ export function defineShopwareConfig(options: ShopwareVitestOptions = {}): ViteU
             dedupe: ['vue', 'pinia', 'vue-router', 'vue-i18n'],
         },
         ssr: {
-            noExternal: ['@friendsofshopware/vitest-shopware-bridge'],
+            noExternal: ['@friendsofshopware/vitest-shopware-admin-bridge'],
         },
         server: {
             fs: {
@@ -122,7 +122,7 @@ export function defineShopwareConfig(options: ShopwareVitestOptions = {}): ViteU
             ? true
             : [...new Set([
                 ...toArray(noExternal),
-                '@friendsofshopware/vitest-shopware-bridge',
+                '@friendsofshopware/vitest-shopware-admin-bridge',
             ])],
     };
 

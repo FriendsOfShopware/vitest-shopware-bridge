@@ -91,7 +91,7 @@ function detectVersion(packageJson: AdministrationPackageJson): SupportedShopwar
 
 function findLinkedAdministration(cwd: string): string | null {
     try {
-        const require = createRequire(path.join(cwd, '__vitest-shopware-bridge__.js'));
+        const require = createRequire(path.join(cwd, '__vitest-shopware-admin-bridge__.js'));
         return path.dirname(require.resolve('administration/package.json'));
     } catch {
         return null;

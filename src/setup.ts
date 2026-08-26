@@ -3,8 +3,8 @@ import { createApp } from 'vue';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 import { createI18n } from 'vue-i18n';
 import { config, enableAutoUnmount } from '@vue/test-utils';
-import componentLoaders from 'virtual:vitest-shopware-bridge/component-loaders';
-import runtimeOptions from 'virtual:vitest-shopware-bridge/runtime-options';
+import componentLoaders from 'virtual:vitest-shopware-admin-bridge/component-loaders';
+import runtimeOptions from 'virtual:vitest-shopware-admin-bridge/runtime-options';
 import { createConsoleGuard, type ConsoleMessagePattern, type GuardedConsoleMethod } from './console.js';
 
 type ServiceMock = Record<string, Mock>;
@@ -42,7 +42,7 @@ declare global {
     var Shopware: any;
 }
 
-export const RUNTIME_SYMBOL = Symbol.for('vitest-shopware-bridge.runtime');
+export const RUNTIME_SYMBOL = Symbol.for('vitest-shopware-admin-bridge.runtime');
 const shopwareVersion = process.env.VITEST_SHOPWARE_VERSION;
 const buildFeatureFlags: Record<string, boolean> = shopwareVersion === '6.6' ? { ADMIN_VITE: true } : {};
 
@@ -78,7 +78,7 @@ if (typeof window.matchMedia === 'undefined') {
     })) as typeof window.matchMedia;
 }
 
-const { ShopwareInstance } = await import('virtual:vitest-shopware-bridge/admin-core');
+const { ShopwareInstance } = await import('virtual:vitest-shopware-admin-bridge/admin-core');
 globalThis.Shopware = ShopwareInstance;
 (window as any).Shopware = ShopwareInstance;
 
@@ -89,11 +89,11 @@ if (currentPinia) {
 }
 
 for (const moduleName of [
-    'virtual:vitest-shopware-bridge/mixins',
-    'virtual:vitest-shopware-bridge/directives',
-    'virtual:vitest-shopware-bridge/filters',
-    'virtual:vitest-shopware-bridge/state',
-    'virtual:vitest-shopware-bridge/component-helper',
+    'virtual:vitest-shopware-admin-bridge/mixins',
+    'virtual:vitest-shopware-admin-bridge/directives',
+    'virtual:vitest-shopware-admin-bridge/filters',
+    'virtual:vitest-shopware-admin-bridge/state',
+    'virtual:vitest-shopware-admin-bridge/component-helper',
 ]) {
     const module = await import(moduleName);
     if (typeof module.default === 'function') {
@@ -272,9 +272,9 @@ const i18n = createI18n({
     messages: {},
     missing: (_locale, key) => key,
 });
-const virtualCallStackPlugin = (await import('virtual:vitest-shopware-bridge/virtual-call-stack-plugin')).default;
-const meteorSdkDataPlugin = (await import('virtual:vitest-shopware-bridge/meteor-sdk-data-plugin')).default;
-const getBlockDataScope = (await import('virtual:vitest-shopware-bridge/block-data-scope')).default;
+const virtualCallStackPlugin = (await import('virtual:vitest-shopware-admin-bridge/virtual-call-stack-plugin')).default;
+const meteorSdkDataPlugin = (await import('virtual:vitest-shopware-admin-bridge/meteor-sdk-data-plugin')).default;
+const getBlockDataScope = (await import('virtual:vitest-shopware-admin-bridge/block-data-scope')).default;
 const blockDataScopePlugin = {
     install(app: any) {
         Object.defineProperty(app.config.globalProperties, '$dataScope', {

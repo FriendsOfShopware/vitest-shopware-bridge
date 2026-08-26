@@ -1,6 +1,6 @@
-# Vitest Shopware Bridge
+# Vitest Shopware Admin Bridge
 
-`@friendsofshopware/vitest-shopware-bridge` provides a Vitest and Vue Test
+`@friendsofshopware/vitest-shopware-admin-bridge` provides a Vitest and Vue Test
 Utils environment for Shopware 6 Administration extensions. It boots the real
 installed Administration runtime while keeping version-sensitive setup out of
 each extension.
@@ -40,12 +40,12 @@ consumer lockfile records the exact resolved commit. See the
 dependency installation and CI:
 
 ```bash
-npm install --save-dev vitest@4 github:FriendsOfShopware/vitest-shopware-bridge
+npm install --save-dev vitest@4 github:FriendsOfShopware/vitest-shopware-admin-bridge
 ```
 
 ```ts
 // vitest.config.ts
-import { defineShopwareConfig } from '@friendsofshopware/vitest-shopware-bridge';
+import { defineShopwareConfig } from '@friendsofshopware/vitest-shopware-admin-bridge';
 
 export default defineShopwareConfig();
 ```
@@ -93,7 +93,7 @@ Shopware component name:
 
 ```ts
 import { expect, it } from 'vitest';
-import { mountShopwareComponent } from '@friendsofshopware/vitest-shopware-bridge/test-utils';
+import { mountShopwareComponent } from '@friendsofshopware/vitest-shopware-admin-bridge/test-utils';
 import '../src/main';
 
 it('renders the widget', async () => {
@@ -138,7 +138,7 @@ import {
     setAclRoles,
     setFeatureFlags,
     withShopwareService,
-} from '@friendsofshopware/vitest-shopware-bridge/test-utils';
+} from '@friendsofshopware/vitest-shopware-admin-bridge/test-utils';
 
 setAclRoles(['order.viewer']);
 setFeatureFlags(['FEATURE_NEXT']);
@@ -243,9 +243,9 @@ SVG or style Vite plugins.
 ## Diagnostics
 
 ```bash
-npx vitest-shopware-bridge doctor
-npx vitest-shopware-bridge doctor --json
-npx vitest-shopware-bridge doctor --admin-path /path/to/administration
+npx vitest-shopware-admin-bridge doctor
+npx vitest-shopware-admin-bridge doctor --json
+npx vitest-shopware-admin-bridge doctor --admin-path /path/to/administration
 ```
 
 If dependencies are missing, the command prints the exact `npm ci --prefix ...`

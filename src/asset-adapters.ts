@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 
-export const BRIDGE_STYLE_STUB_ID = '\0vitest-shopware-bridge:style';
+export const BRIDGE_STYLE_STUB_ID = '\0vitest-shopware-admin-bridge:style';
 
 export interface BridgeTemplateTransformResult {
     code: string;

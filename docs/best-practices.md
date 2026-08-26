@@ -56,7 +56,7 @@ and `config`, and adds Shopware-specific mounting and query helpers:
 import {
     flushPromises,
     mountShopwareComponent,
-} from '@friendsofshopware/vitest-shopware-bridge/test-utils';
+} from '@friendsofshopware/vitest-shopware-admin-bridge/test-utils';
 ```
 
 This keeps the test on the Vue Test Utils instance selected for the detected
@@ -107,7 +107,7 @@ restored even when the assertion fails:
 import { vi } from 'vitest';
 import {
     withShopwareService,
-} from '@friendsofshopware/vitest-shopware-bridge/test-utils';
+} from '@friendsofshopware/vitest-shopware-admin-bridge/test-utils';
 
 const load = vi.fn().mockResolvedValue({ total: 3 });
 
@@ -130,7 +130,7 @@ import { vi } from 'vitest';
 import {
     createRepositoryMock,
     setRepositoryMocks,
-} from '@friendsofshopware/vitest-shopware-bridge/test-utils';
+} from '@friendsofshopware/vitest-shopware-admin-bridge/test-utils';
 
 const productRepository = createRepositoryMock({
     search: vi.fn().mockResolvedValue({
@@ -160,7 +160,7 @@ import {
     setAclRoles,
     setFeatureFlags,
     setShopwareContext,
-} from '@friendsofshopware/vitest-shopware-bridge/test-utils';
+} from '@friendsofshopware/vitest-shopware-admin-bridge/test-utils';
 
 setAclRoles(['order.viewer']);
 setFeatureFlags(['FEATURE_NEXT']);
@@ -196,7 +196,7 @@ owns it:
 ```ts
 import {
     allowConsoleMessage,
-} from '@friendsofshopware/vitest-shopware-bridge/test-utils';
+} from '@friendsofshopware/vitest-shopware-admin-bridge/test-utils';
 
 allowConsoleMessage('expected deprecation', 'warn');
 ```

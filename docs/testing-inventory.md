@@ -1,7 +1,7 @@
 # Shopware Administration testing inventory
 
 This inventory defines which recurring Shopware Administration test patterns
-belong in `vitest-shopware-bridge` and which should remain in an extension. It
+belong in `vitest-shopware-admin-bridge` and which should remain in an extension. It
 was derived from Shopware trunk at `1bfd59541be45317e8140d23ad1e6fd4721ee43f`
 and compared with the `v6.6.9.0` and `v6.7.9.1` trees.
 

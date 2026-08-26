@@ -1,17 +1,17 @@
 {
-    "name": "@friendsofshopware/vitest-shopware-bridge",
+    "name": "@friendsofshopware/vitest-shopware-admin-bridge",
     "version": "0.1.0",
     "description": "Vitest bridge for Shopware 6 Administration extensions",
     "type": "module",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/FriendsOfShopware/vitest-shopware-bridge.git"
+        "url": "git+https://github.com/FriendsOfShopware/vitest-shopware-admin-bridge.git"
     },
     "bugs": {
-        "url": "https://github.com/FriendsOfShopware/vitest-shopware-bridge/issues"
+        "url": "https://github.com/FriendsOfShopware/vitest-shopware-admin-bridge/issues"
     },
-    "homepage": "https://github.com/FriendsOfShopware/vitest-shopware-bridge#readme",
+    "homepage": "https://github.com/FriendsOfShopware/vitest-shopware-admin-bridge#readme",
     "keywords": [
         "shopware",
         "shopware-6",
@@ -36,7 +36,7 @@
         }
     },
     "bin": {
-        "vitest-shopware-bridge": "dist/cli.js"
+        "vitest-shopware-admin-bridge": "dist/cli.js"
     },
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
