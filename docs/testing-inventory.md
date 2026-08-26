@@ -50,6 +50,23 @@ The state transition is a compatibility boundary the bridge must hide:
 | Time, UUID and entity fixtures | Nothing | Generic or domain-specific utilities |
 | Console output | Optional strict failure and per-test allowance | Deliberate message allowances |
 
+## Compatibility ownership contract
+
+The bridge uses a hybrid boundary:
+
+| Bridge-owned and version-independent | Administration-owned and version-correct |
+| --- | --- |
+| Twig/HTML string loading and comment removal | Shopware component and Twig runtime factories |
+| Exact SVG string loading | Vue or Vue compatibility runtime |
+| CSS, SCSS and Less test stubs | Pinia/Vuex state and Shopware services |
+| jsdom polyfills and strict console enforcement | Mixins, directives, filters and core components |
+| Repository doubles and wrapper queries | Native Shopware setup-SFC transformation |
+
+Shopware's private build plugins are not copied or imported. The small asset
+adapters are bridge contracts with golden tests; version-semantic behavior is
+loaded from the selected Administration and exercised by the real-version CI
+matrix.
+
 ## Gap closure record
 
 | Original gap | Implemented behavior | Executable proof |
@@ -57,8 +74,8 @@ The state transition is a compatibility boundary the bridge must hide:
 | Vue SFC transformation | `@vitejs/plugin-vue` is always installed by `defineShopwareConfig()` | `plain-sfc.vue` integration fixture on 6.6 and 6.7 |
 | Native Shopware setup SFCs | The bridge detects and runs the Administration's own `vue-setup-transform` before Vue when that transform is shipped | `native-setup.vue` on trunk plus unit delegation test |
 | 6.6 Vue compatibility runtime | Detection prefers `@vue/compat` even when 6.6 also declares Vite; the Vue alias targets the compat ESM runtime | Discovery unit test and complete 6.6 integration suite |
-| SVG imports | SVG files are exported as their source string | `test-icon.svg` integration assertion |
-| Twig comment parity | HTML and Twig comments, including unclosed comments, are removed like Shopware's Jest transformer | Unit transform test and rendered Twig fixture |
+| SVG imports | SVG files are exported as their exact UTF-8 source string by the bridge-owned adapter | Golden adapter test and exact `test-icon.svg` integration assertion |
+| Twig comment parity | The bridge-owned adapter removes HTML and Twig comments, including unclosed comments, and preserves every other byte | Golden adapter tests and exact rendered Twig fixture |
 | Service injection | Every registered service is copied into Vue Test Utils `global.provide` | Injected-service integration component |
 | Shopware directives/plugins | Mixins, directives and filters are imported from source; Pinia, i18n, Shopware plugins and block data scope are installed globally | Global setup integration assertions and core component loading |
 | Standard context | API/session defaults and `$router`, `$route`, `$device`, i18n and sanitizer mocks are installed | Context and global-mock integration assertions |

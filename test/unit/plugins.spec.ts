@@ -5,16 +5,9 @@ import { describe, expect, it } from 'vitest';
 import {
     buildComponentImportMap,
     shopwareSetupSfcPlugin,
-    transformTwigTemplate,
 } from '../../src/plugins.js';
 
-describe('bridge transforms', () => {
-    it('removes HTML and Twig comments using Shopware transformer semantics', () => {
-        const template = '<!-- html -->{# twig #}<div>Visible</div>{# unclosed';
-
-        expect(transformTwigTemplate(template)).toBe('<div>Visible</div>');
-    });
-
+describe('Shopware integration plugins', () => {
     it('discovers sync, async and extended Administration components without writing a map', () => {
         const administration = mkdtempSync(path.join(tmpdir(), 'shopware-component-map-'));
         const source = path.join(administration, 'src/app/component/index.ts');

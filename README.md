@@ -206,6 +206,27 @@ allowConsoleMessage('expected deprecation', 'warn');
 Strict mode starts after the Shopware bootstrap, so it reports test behavior
 rather than initialization noise.
 
+## Compatibility contract
+
+The bridge deliberately separates stable test adapters from Shopware runtime
+behavior.
+
+Bridge-owned adapters behave identically for every supported Administration:
+
+- Twig and imported HTML become ESM strings; HTML and Twig comments are removed
+  while all other bytes are preserved;
+- SVG imports contain the exact UTF-8 file contents;
+- CSS, SCSS and Less imports resolve to an empty module in unit tests;
+- jsdom polyfills, repository doubles, queries and console enforcement use the
+  bridge's own versioned contracts.
+
+The selected Administration remains authoritative for Vue or Vue compat,
+Shopware's component and Twig runtime factories, state, services, mixins,
+directives, filters, core components and native setup-SFC transformation. This
+keeps the test-facing API stable without making a Shopware 6.6 test silently run
+copied 6.7 runtime behavior. The bridge does not import Shopware's private Twig,
+SVG or style Vite plugins.
+
 ## Diagnostics
 
 ```bash

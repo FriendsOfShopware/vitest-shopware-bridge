@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import NativeSetup from './fixture/native-setup.vue';
 import PlainSfc from './fixture/plain-sfc.vue';
+import fixtureTemplate from './fixture/bridge-fixture.html.twig';
 import icon from './fixture/test-icon.svg';
 import {
     allowConsoleMessage,
@@ -39,12 +40,28 @@ describe('Shopware Vitest bridge', () => {
         expect(wrapper.text()).toContain('Clicks: 1');
     });
 
-    it('compiles Vue SFCs and stringifies SVG imports', () => {
+    it('compiles plain Vue SFCs', () => {
         const wrapper = mount(PlainSfc, { props: { label: 'SFC works' } });
 
         expect(wrapper.get('.plain-sfc').text()).toBe('SFC works');
-        expect(icon).toContain('<svg');
-        expect(icon).toContain('viewBox="0 0 16 16"');
+    });
+
+    it('applies version-independent Twig and SVG asset contracts', () => {
+        expect(fixtureTemplate).toBe([
+            '{% block bridge_fixture %}',
+            '',
+            '<button class="bridge-fixture" type="button" @click="increment">',
+            '    {{ label }}: {{ count }}',
+            '</button>',
+            '{% endblock %}',
+            '',
+        ].join('\n'));
+        expect(icon).toBe([
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">',
+            '    <path d="M1 1h14v14H1z" />',
+            '</svg>',
+            '',
+        ].join('\n'));
     });
 
     it.runIf(supportsNativeSetup)('runs the Administration-native Shopware setup SFC transform', () => {

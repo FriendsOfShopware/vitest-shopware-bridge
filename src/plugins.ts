@@ -3,6 +3,11 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import type { Plugin } from 'vite';
 import { createJiti } from 'jiti';
+import {
+    loadBridgeAssetModule,
+    resolveBridgeAssetId,
+    transformBridgeTemplateModule,
+} from './asset-adapters.js';
 import type { ShopwareRuntimeOptions } from './config.js';
 import type { ResolvedAdministration } from './discovery.js';
 
@@ -27,9 +32,6 @@ const OPTIONAL_ADMIN_MODULES: Record<string, string> = {
 
 const COMPONENT_LOADERS_ID = 'virtual:vitest-shopware-bridge/component-loaders';
 const RUNTIME_OPTIONS_ID = 'virtual:vitest-shopware-bridge/runtime-options';
-const STYLE_RE = /\.(?:css|less|scss)(?:\?.*)?$/;
-const SVG_RE = /\.svg(?:\?.*)?$/;
-const STYLE_STUB_ID = '\0vitest-shopware-bridge:style';
 const EMPTY_PLUGIN_ID = '\0vitest-shopware-bridge:empty-plugin';
 const EMPTY_DATA_SCOPE_ID = '\0vitest-shopware-bridge:empty-data-scope';
 
@@ -174,15 +176,6 @@ function registrationModule(administrationPath: string, relativeDirectory: strin
         'export default () => modules.map((module) => module.default);';
 }
 
-/** Match Shopware's Jest transformer while producing an ESM string module. */
-export function transformTwigTemplate(source: string): string {
-    return source
-        .replaceAll(/<!--[\s\S]*?(?:-->|$)/g, '')
-        .replaceAll('<!--', '')
-        .replaceAll(/\{#[\s\S]*?(?:#\}|$)/g, '')
-        .replaceAll('{#', '');
-}
-
 export function shopwareSetupSfcPlugin(administration: ResolvedAdministration): Plugin | null {
     const transformPath = path.join(administration.path, 'build/vue-setup-transform/index.js');
     const transformSourcePath = path.join(administration.path, 'build/vue-setup-transform/index.ts');
@@ -259,16 +252,18 @@ export function shopwareBridgePlugin(
                 return `\0${source}`;
             }
 
-            if (STYLE_RE.test(source)) {
-                return STYLE_STUB_ID;
+            const assetId = resolveBridgeAssetId(source);
+            if (assetId) {
+                return assetId;
             }
 
             return null;
         },
 
         load(id) {
-            if (id === STYLE_STUB_ID) {
-                return 'export default {}';
+            const assetModule = loadBridgeAssetModule(id);
+            if (assetModule !== null) {
+                return assetModule;
             }
 
             if (id === EMPTY_PLUGIN_ID) {
@@ -292,25 +287,11 @@ export function shopwareBridgePlugin(
                 return `export default ${JSON.stringify({ strictConsole: runtimeOptions.strictConsole === true })};`;
             }
 
-            if (SVG_RE.test(id)) {
-                const fileName = id.split('?')[0];
-                if (existsSync(fileName)) {
-                    return `export default ${JSON.stringify(readFileSync(fileName, 'utf8'))};`;
-                }
-            }
-
             return null;
         },
 
         transform(source, id) {
-            if (!/\.(?:html\.twig|twig|html)$/.test(id)) {
-                return null;
-            }
-
-            return {
-                code: `export default ${JSON.stringify(transformTwigTemplate(source))};`,
-                map: null,
-            };
+            return transformBridgeTemplateModule(source, id);
         },
     };
 }
