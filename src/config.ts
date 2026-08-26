@@ -14,6 +14,10 @@ import { shopwareBridgePlugin, shopwareSetupSfcPlugin } from './plugins.js';
 export interface ShopwareRuntimeOptions {
     /** Fail a test when it emits an unexpected console warning or error. */
     strictConsole?: boolean;
+    /** Skip component discovery and Administration UI registrations for class/API tests. */
+    mode?: 'full' | 'lite';
+    /** Persist the Administration component import map between Vitest starts. */
+    componentScanCache?: boolean;
 }
 
 export interface ShopwareVitestOptions extends ResolveAdministrationOptions {

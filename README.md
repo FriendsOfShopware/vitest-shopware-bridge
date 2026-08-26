@@ -82,9 +82,15 @@ The configuration installs:
 - Vue SFC compilation and the Administration-native setup transform when present;
 - Twig, SCSS/CSS/Less and SVG handling;
 - real Shopware component, mixin, directive, filter, state and service registries;
-- the real context, session and system stores (Pinia on 6.7, legacy Vuex on 6.6);
+- the Administration Pinia store initializer plus context and a safe no-op notification store on 6.7, and legacy Vuex state on 6.6;
 - fresh Pinia and legacy Vuex state for every test;
 - Vue Test Utils plugins, dependency injection, synchronized locales/i18n and standard Administration mocks.
+
+The full runtime also installs slot-preserving stubs for common layout
+components (`sw-page`, `sw-card-view`, `mt-card`, `mt-banner`,
+`mt-empty-state`, `mt-link` and `sw-search-bar`) plus lightweight icon stubs.
+Named `sw-page` content and smart-bar slots therefore remain visible without a
+local page-stub map.
 
 ## Component tests
 
@@ -110,6 +116,19 @@ writing Shopware's private generated component map. This allows extensions to
 test overrides and extended core components even when their base component was
 not registered yet. Dependencies are loaded recursively before
 `Shopware.Component.build()` applies the override chain.
+
+The resulting import map is cached in the operating system's temporary
+directory per Administration Git revision. Disable the cache while editing the
+selected Administration source without changing its revision:
+
+```ts
+export default defineShopwareConfig({
+    runtime: { componentScanCache: false },
+});
+```
+
+`VITEST_SHOPWARE_ADMIN_BRIDGE_CACHE_DIR` can place the cache below a different
+base directory. Cache read and write failures fall back to a fresh scan.
 
 ```ts
 Shopware.Component.override('sw-button', overrideConfig);
@@ -197,6 +216,26 @@ to the Vue i18n instance before `mountShopwareComponent()` and
 State is reset automatically. `resetShopwareTestState()` is available when a
 single test needs to return to the default API context, locale state, services
 and a fresh Pinia explicitly.
+
+## Lite runtime
+
+Class, API-client and other non-component tests can use a lighter runtime that
+keeps Shopware context, state and service helpers but skips Administration
+component discovery, mixins, directives, filters and component-helper
+registration:
+
+```ts
+export default defineShopwareConfig({
+    runtime: { mode: 'lite' },
+    vitest: {
+        test: { include: ['test/core/**/*.spec.ts'] },
+    },
+});
+```
+
+Use a separate Vitest config when one package needs both modes. Tests that
+mount registered Shopware components must continue to use the default
+`mode: 'full'` runtime.
 
 ## Vue wrapper queries and Meteor interaction
 

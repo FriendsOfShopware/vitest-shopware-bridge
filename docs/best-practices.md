@@ -23,6 +23,12 @@ Do not mount a page to prove a calculation that can be tested as a plain class.
 Conversely, do not replace the entire Shopware component registry with stubs
 when the inheritance or override chain is the behavior being tested.
 
+Group plain class and API-client tests under a separate config with
+`runtime.mode: 'lite'` when they only need Shopware context, state or service
+helpers. Keep the default full runtime for registration and component tests;
+lite mode deliberately does not load component imports, mixins, directives or
+filters.
+
 ## Keep entry-point side effects deliberate
 
 Import `src/main` only in tests that need the extension's registrations. Module
@@ -67,6 +73,10 @@ Vue component object.
 Use a full mount when child behavior, slots, dependency injection or Shopware
 component inheritance matters. Use a shallow mount when the parent contract is
 the only subject and name each deliberate child stub in the test.
+
+The bridge's default page and card stubs preserve their slots. Add a local stub
+only when a test needs behavior beyond that layout contract, not simply to make
+`sw-page` content render.
 
 ## Assert behavior instead of implementation structure
 
