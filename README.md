@@ -23,9 +23,9 @@ ships it.
 ## Requirements
 
 - Shopware 6.6 or 6.7 Administration source and installed npm dependencies
-- Node.js 20.19+, 22.12+, or 24
+- Node.js 22.12+, 24, or 26+
 - npm 10+
-- Vitest 4
+- Vitest 5 and Vite 6.4+
 
 The bridge discovers an Administration in a Shopware monorepo, a Composer
 installation, or an npm `administration` link. `SHOPWARE_ADMINISTRATION_PATH`
@@ -39,7 +39,7 @@ Install the published package and commit the resulting npm lockfile. See the
 dependency installation and CI:
 
 ```bash
-npm install --save-dev vitest@4 @friendsofshopware/vitest-shopware-admin-bridge
+npm install --save-dev vitest@5 @friendsofshopware/vitest-shopware-admin-bridge
 ```
 
 ```ts
