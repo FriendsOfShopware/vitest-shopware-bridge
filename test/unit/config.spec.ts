@@ -65,6 +65,8 @@ describe('defineShopwareConfig', () => {
         }) as any;
 
         expect(config.test.environment).toBe('jsdom');
+        expect(config.test.clearMocks).toBe(true);
+        expect(config.test.restoreMocks).toBe(true);
         expect(config.test.include).toEqual(['custom/**/*.spec.ts']);
         expect(config.test.setupFiles[0]).toMatch(/setup\.(?:js|ts)$/);
         expect(config.test.setupFiles[1]).toBe(consumerSetup);

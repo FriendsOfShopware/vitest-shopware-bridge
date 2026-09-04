@@ -7,11 +7,16 @@ describe('published package metadata', () => {
         const packagePath = fileURLToPath(new URL('../../package.json', import.meta.url));
         const packageJson = JSON.parse(readFileSync(packagePath, 'utf8')) as {
             dependencies?: Record<string, string>;
+            peerDependencies?: Record<string, string>;
         };
 
         expect(packageJson.dependencies).toMatchObject({
             pinia: expect.any(String),
             'vue-i18n': expect.any(String),
+        });
+        expect(packageJson.peerDependencies).toMatchObject({
+            vite: expect.stringContaining('^6.4.0'),
+            vitest: expect.stringContaining('^5.0.0'),
         });
     });
 });

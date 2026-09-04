@@ -32,7 +32,7 @@ AcmeExample/
 From `src/Resources/app/administration`, install Vitest and the bridge:
 
 ```bash
-npm install --save-dev vitest@4 @friendsofshopware/vitest-shopware-admin-bridge
+npm install --save-dev vitest@5 @friendsofshopware/vitest-shopware-admin-bridge
 ```
 
 Commit both `package.json` and `package-lock.json`, then use `npm ci` locally and
@@ -54,7 +54,7 @@ Use these scripts in the Administration `package.json`:
     },
     "devDependencies": {
         "@friendsofshopware/vitest-shopware-admin-bridge": "^0.1.0",
-        "vitest": "^4.0.0"
+        "vitest": "^5.0.0"
     }
 }
 ```
